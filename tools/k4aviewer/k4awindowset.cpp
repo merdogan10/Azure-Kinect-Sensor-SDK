@@ -182,15 +182,26 @@ void K4AWindowSet::StartNormalWindows(const char *sourceIdentifier,
 void K4AWindowSet::StartPointCloudWindow(const char *sourceIdentifier,
                                          const k4a::calibration &calibrationData,
                                          K4ADataSource<k4a::capture> *cameraDataSource,
-                                         bool enableColorPointCloud)
+                                         bool enableColorPointCloud,
+                                         const k4a::calibration &calibrationData2,
+                                         K4ADataSource<k4a::capture> *cameraDataSource2,
+                                         linmath::mat4x4 se3,
+                                         linmath::mat4x4 se3_2)
 {
     std::string pointCloudTitle = std::string(sourceIdentifier) + ": Point Cloud Viewer";
     auto captureSource = std::make_shared<K4ANonBufferingCaptureSource>();
     cameraDataSource->RegisterObserver(captureSource);
 
+    auto captureSource2 = std::make_shared<K4ANonBufferingCaptureSource>();
+    cameraDataSource2->RegisterObserver(captureSource2);
+
     auto &wm = K4AWindowManager::Instance();
     wm.AddWindow(std14::make_unique<K4APointCloudWindow>(std::move(pointCloudTitle),
                                                          enableColorPointCloud,
                                                          std::move(captureSource),
-                                                         calibrationData));
+                                                         calibrationData,
+                                                         std::move(captureSource2),
+                                                         calibrationData2,
+                                                         se3,
+                                                         se3_2));
 }

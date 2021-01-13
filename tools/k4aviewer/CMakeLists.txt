@@ -53,6 +53,7 @@ include_directories(
     ${OPENGL_INCLUDE_DIRS}
     ${CMAKE_CURRENT_LIST_DIR}
 )
+find_package(OpenCV REQUIRED)
 
 set(EXTERNAL_LIBRARIES
     k4a::k4a
@@ -64,6 +65,7 @@ set(EXTERNAL_LIBRARIES
     libyuv::libyuv
     glfw::glfw
     ${OPENGL_LIBRARIES}
+    ${OpenCV_LIBS}
 )
 
 # On Windows, we need to call into setupapi to get USB container ID information

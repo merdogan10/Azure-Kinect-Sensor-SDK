@@ -13,3 +13,11 @@ high-DPI mode, you can pass -HighDPI or -NormalDPI to override that behavior.
 ```
 k4aviewer.exe [-HighDPI|-NormalDPI]
 ```
+
+# Important Notes
+
+## Don't forget to copy `depthengine`
+* from: Azure Kinect SDK v1.4.1\sdk\windows-desktop\amd64\release\bin\depthengine_2_0.dll
+* to: Azure-Kinect-Sensor-SDK\build\Win-x64-Debug-Ninja\bin\depthengine_2_0.dll
+
+## Change OpenCV_DIR in CmakeSettings.json to your location

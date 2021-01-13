@@ -1084,12 +1084,12 @@ void K4ADeviceDockControl::SetViewType(K4AWindowSet::ViewType viewType)
         try
         {
             k4a::calibration calib = m_device.get_calibration(m_config.DepthMode, m_config.ColorResolution);
-            bool rgbPointCloudAvailable = m_config.EnableColorCamera &&
-                                          m_config.ColorFormat == K4A_IMAGE_FORMAT_COLOR_BGRA32;
-            K4AWindowSet::StartPointCloudWindow(m_deviceSerialNumber.c_str(),
-                                                calib,
-                                                &m_cameraDataSource,
-                                                rgbPointCloudAvailable);
+            //bool rgbPointCloudAvailable = m_config.EnableColorCamera &&
+            //                              m_config.ColorFormat == K4A_IMAGE_FORMAT_COLOR_BGRA32;
+            //K4AWindowSet::StartPointCloudWindow(m_deviceSerialNumber.c_str(),
+            //                                    calib,
+            //                                    &m_cameraDataSource,
+            //                                    rgbPointCloudAvailable);
         }
         catch (const k4a::error &e)
         {

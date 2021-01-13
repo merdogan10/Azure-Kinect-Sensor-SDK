@@ -71,7 +71,7 @@ bool K4AFilePicker::Show()
             break;
         }
     }
-
+    wasSelected = true;
     return wasSelected;
 }
 

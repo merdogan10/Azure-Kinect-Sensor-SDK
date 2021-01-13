@@ -16,6 +16,7 @@
 #include "ik4avisualizationwindow.h"
 #include "k4anonbufferingcapturesource.h"
 #include "k4apointcloudvisualizer.h"
+#include "linmath.h"
 
 namespace k4aviewer
 {
@@ -28,7 +29,11 @@ public:
     K4APointCloudWindow(std::string &&windowTitle,
                         bool enableColorPointCloud,
                         std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource,
-                        const k4a::calibration &calibrationData);
+                        const k4a::calibration &calibrationData,
+                        std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource2,
+                        const k4a::calibration &calibrationData2,
+                        linmath::mat4x4 se3,
+                        linmath::mat4x4 se3_2);
     ~K4APointCloudWindow() override = default;
 
     K4APointCloudWindow(const K4APointCloudWindow &) = delete;
@@ -45,7 +50,7 @@ private:
     std::string m_title;
     K4APointCloudVisualizer m_pointCloudVisualizer;
     std::shared_ptr<K4AViewerImage> m_texture;
-    std::shared_ptr<K4ANonBufferingCaptureSource> m_captureSource;
+    std::shared_ptr<K4ANonBufferingCaptureSource> m_captureSource, m_captureSource2;
 
     K4APointCloudVisualizer::ColorizationStrategy m_colorizationStrategy =
         K4APointCloudVisualizer::ColorizationStrategy::Shaded;

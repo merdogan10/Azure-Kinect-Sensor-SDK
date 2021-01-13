@@ -40,10 +40,17 @@ std::string SafeGetTag(const k4a::playback &recording, const char *tagName)
 }
 } // namespace
 
-K4ARecordingDockControl::K4ARecordingDockControl(std::string &&path, k4a::playback &&recording) :
+K4ARecordingDockControl::K4ARecordingDockControl(std::string &path,
+                                                 k4a::playback &&recording,
+                                                 k4a::playback &&recording2,
+                                                 linmath::mat4x4 se3,
+                                                 linmath::mat4x4 se3_2) :
     m_filenameLabel(std::move(path))
 {
+    linmath::mat4x4_dup(m_se3, se3);
+    linmath::mat4x4_dup(m_se3_2, se3_2);
     m_playbackThreadState.SeekTimestamp = InvalidSeekTime;
+    m_playbackThreadState2.SeekTimestamp = InvalidSeekTime;
 
     // Recording config
     //
@@ -56,15 +63,18 @@ K4ARecordingDockControl::K4ARecordingDockControl(std::string &&path, k4a::playba
     {
     case K4A_FRAMES_PER_SECOND_5:
         m_playbackThreadState.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 5));
+        m_playbackThreadState2.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 5));
         break;
 
     case K4A_FRAMES_PER_SECOND_15:
         m_playbackThreadState.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 15));
+        m_playbackThreadState2.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 15));
         break;
 
     case K4A_FRAMES_PER_SECOND_30:
     default:
         m_playbackThreadState.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 30));
+        m_playbackThreadState2.TimePerFrame = std::chrono::microseconds(std::micro::den / (std::micro::num * 30));
         break;
     }
 
@@ -94,6 +104,7 @@ K4ARecordingDockControl::K4ARecordingDockControl(std::string &&path, k4a::playba
         colorResolutionSS << m_recordConfiguration.color_resolution;
 
         recording.set_color_conversion(K4A_IMAGE_FORMAT_COLOR_BGRA32);
+        recording2.set_color_conversion(K4A_IMAGE_FORMAT_COLOR_BGRA32);
         m_recordConfiguration.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
     }
     else
@@ -128,7 +139,12 @@ K4ARecordingDockControl::K4ARecordingDockControl(std::string &&path, k4a::playba
     m_playbackThread = std14::make_unique<K4APollingThread>(
         [pThreadState](bool) { return PlaybackThreadFn(pThreadState); });
 
-    SetViewType(K4AWindowSet::ViewType::Normal);
+    m_playbackThreadState2.Recording = std::move(recording2);
+    PlaybackThreadState *pThreadState2 = &m_playbackThreadState2;
+    m_playbackThread2 = std14::make_unique<K4APollingThread>(
+        [pThreadState2](bool) { return PlaybackThreadFn(pThreadState2); });
+
+    SetViewType(K4AWindowSet::ViewType::PointCloudViewer);
 }
 
 K4ADockControlStatus K4ARecordingDockControl::Show()
@@ -177,6 +193,10 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
         std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
         m_playbackThreadState.Step = StepDirection::Backward;
         m_playbackThreadState.Paused = true;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.Step = StepDirection::Backward;
+        m_playbackThreadState2.Paused = true;
     }
     ImGui::SameLine();
 
@@ -187,6 +207,7 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
     bool paused;
     {
         std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
         currentTimestampUs = static_cast<uint64_t>(m_playbackThreadState.CurrentCaptureTimestamp.count());
         paused = m_playbackThreadState.Paused;
     }
@@ -196,6 +217,10 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
         std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
         m_playbackThreadState.SeekTimestamp = std::chrono::microseconds(currentTimestampUs);
         m_playbackThreadState.Paused = true;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.SeekTimestamp = std::chrono::microseconds(currentTimestampUs);
+        m_playbackThreadState2.Paused = true;
     }
     ImGui::SameLine();
 
@@ -204,6 +229,10 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
         std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
         m_playbackThreadState.Step = StepDirection::Forward;
         m_playbackThreadState.Paused = true;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.Step = StepDirection::Forward;
+        m_playbackThreadState2.Paused = true;
     }
 
     if (ImGui::Button("<<"))
@@ -212,12 +241,20 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
         m_playbackThreadState.SeekTimestamp = std::chrono::microseconds(0);
         m_playbackThreadState.Step = StepDirection::Forward;
         m_playbackThreadState.Paused = true;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.SeekTimestamp = std::chrono::microseconds(0);
+        m_playbackThreadState2.Step = StepDirection::Forward;
+        m_playbackThreadState2.Paused = true;
     }
     ImGui::SameLine();
     if (ImGui::Button(paused ? ">" : "||"))
     {
         std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
         m_playbackThreadState.Paused = !m_playbackThreadState.Paused;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.Paused = !m_playbackThreadState2.Paused;
     }
     ImGui::SameLine();
     if (ImGui::Button(">>"))
@@ -226,6 +263,11 @@ K4ADockControlStatus K4ARecordingDockControl::Show()
         m_playbackThreadState.SeekTimestamp = std::chrono::microseconds(m_recordingLengthUsec + 1);
         m_playbackThreadState.Step = StepDirection::Forward;
         m_playbackThreadState.Paused = true;
+
+        std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
+        m_playbackThreadState2.SeekTimestamp = std::chrono::microseconds(m_recordingLengthUsec + 1);
+        m_playbackThreadState2.Step = StepDirection::Forward;
+        m_playbackThreadState2.Paused = true;
     }
 
     K4AWindowSet::ShowModeSelector(&m_viewType, true, m_recordingHasDepth, [this](K4AWindowSet::ViewType t) {
@@ -452,6 +494,7 @@ void K4ARecordingDockControl::SetViewType(K4AWindowSet::ViewType viewType)
     K4AWindowManager::Instance().ClearWindows();
 
     std::lock_guard<std::mutex> lock(m_playbackThreadState.Mutex);
+    std::lock_guard<std::mutex> lock2(m_playbackThreadState2.Mutex);
 
     K4ADataSource<k4a_imu_sample_t> *imuDataSource = nullptr;
     switch (viewType)
@@ -477,10 +520,15 @@ void K4ARecordingDockControl::SetViewType(K4AWindowSet::ViewType viewType)
         try
         {
             k4a::calibration calibration = m_playbackThreadState.Recording.get_calibration();
+            k4a::calibration calibration2 = m_playbackThreadState2.Recording.get_calibration();
             K4AWindowSet::StartPointCloudWindow(m_filenameLabel.c_str(),
                                                 std::move(calibration),
                                                 &m_playbackThreadState.CaptureDataSource,
-                                                m_recordConfiguration.color_track_enabled);
+                                                m_recordConfiguration.color_track_enabled,
+                                                std::move(calibration2),
+                                                &m_playbackThreadState2.CaptureDataSource,
+                                                m_se3,
+                                                m_se3_2);
         }
         catch (const k4a::error &e)
         {

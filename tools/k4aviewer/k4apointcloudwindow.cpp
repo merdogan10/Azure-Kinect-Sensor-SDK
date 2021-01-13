@@ -46,7 +46,9 @@ void K4APointCloudWindow::Show(K4AWindowPlacementInfo placementInfo)
     if (m_captureSource->HasData())
     {
         const PointCloudVisualizationResult visualizationResult =
-            m_pointCloudVisualizer.UpdateTexture(&m_texture, m_captureSource->GetLastCapture());
+            m_pointCloudVisualizer.UpdateTexture(&m_texture,
+                                                 m_captureSource->GetLastCapture(),
+                                                 m_captureSource2->GetLastCapture());
         if (!CheckVisualizationResult(visualizationResult))
         {
             // Fatal error.
@@ -132,10 +134,15 @@ const char *K4APointCloudWindow::GetTitle() const
 K4APointCloudWindow::K4APointCloudWindow(std::string &&windowTitle,
                                          bool enableColorPointCloud,
                                          std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource,
-                                         const k4a::calibration &calibrationData) :
+                                         const k4a::calibration &calibrationData,
+                                         std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource2,
+                                         const k4a::calibration &calibrationData2,
+                                         linmath::mat4x4 se3,
+                                         linmath::mat4x4 se3_2) :
     m_title(std::move(windowTitle)),
-    m_pointCloudVisualizer(enableColorPointCloud, calibrationData),
+    m_pointCloudVisualizer(enableColorPointCloud, calibrationData, calibrationData2, se3, se3_2),
     m_captureSource(std::move(captureSource)),
+    m_captureSource2(std::move(captureSource2)),
     m_pointSize(DefaultPointSize),
     m_enableColorPointCloud(enableColorPointCloud)
 {

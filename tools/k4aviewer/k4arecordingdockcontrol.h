@@ -20,6 +20,7 @@
 #include "k4aimugraphdatagenerator.h"
 #include "k4apollingthread.h"
 #include "k4awindowset.h"
+#include "linmath.h"
 
 namespace k4aviewer
 {
@@ -27,7 +28,11 @@ namespace k4aviewer
 class K4ARecordingDockControl : public IK4ADockControl
 {
 public:
-    explicit K4ARecordingDockControl(std::string &&path, k4a::playback &&recording);
+    explicit K4ARecordingDockControl(std::string &path,
+                                     k4a::playback &&recording,
+                                     k4a::playback &&recording2,
+                                     linmath::mat4x4 se3,
+                                     linmath::mat4x4 se3_2);
 
     K4ADockControlStatus Show() override;
 
@@ -45,7 +50,7 @@ private:
 
         // UI control signals
         //
-        bool Paused = false;
+        bool Paused = true;
         bool RecordingAtEnd = false;
         StepDirection Step = StepDirection::None;
         std::chrono::microseconds SeekTimestamp;
@@ -63,6 +68,8 @@ private:
 
         bool ImuPlaybackEnabled;
     } m_playbackThreadState;
+
+    struct PlaybackThreadState m_playbackThreadState2;
 
     static bool PlaybackThreadFn(PlaybackThreadState *state);
 
@@ -97,6 +104,10 @@ private:
     K4AWindowSet::ViewType m_viewType = K4AWindowSet::ViewType::Normal;
 
     std::unique_ptr<K4APollingThread> m_playbackThread;
+    std::unique_ptr<K4APollingThread> m_playbackThread2;
+
+    linmath::mat4x4 m_se3;
+    linmath::mat4x4 m_se3_2;
 };
 
 } // namespace k4aviewer

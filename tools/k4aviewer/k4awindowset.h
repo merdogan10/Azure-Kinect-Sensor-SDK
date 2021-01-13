@@ -22,6 +22,7 @@
 #include "k4adatasource.h"
 #include "k4amicrophonelistener.h"
 #include "k4avideowindow.h"
+#include "linmath.h"
 
 namespace k4aviewer
 {
@@ -51,7 +52,11 @@ public:
     static void StartPointCloudWindow(const char *sourceIdentifier,
                                       const k4a::calibration &calibrationData,
                                       K4ADataSource<k4a::capture> *cameraDataSource,
-                                      bool enableColorPointCloud);
+                                      bool enableColorPointCloud,
+                                      const k4a::calibration &calibrationData2,
+                                      K4ADataSource<k4a::capture> *cameraDataSource2,
+                                      linmath::mat4x4 se3,
+                                      linmath::mat4x4 se3_2);
 };
 } // namespace k4aviewer
 

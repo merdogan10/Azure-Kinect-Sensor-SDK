@@ -158,9 +158,9 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
         linmath::mat4x4 se3, se3_2;
         linmath::mat4x4 c2c, c2c_id;
         
-        int case_no = 3;
-        bool is_quat = true;
-        bool rotate_x = true;
+        int case_no = 1;
+        bool is_quat = false;
+        bool rotate_x = false;
 
         Charuco board(input_path, calibration_file3, is_quat, rotate_x);
         Charuco board2(input_path2, calibration_file6, is_quat, rotate_x);

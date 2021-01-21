@@ -24,6 +24,19 @@ using namespace cv;
 using namespace std;
 namespace k4aviewer
 {
+void get_extrinsics(k4a_calibration_t calibration, linmath::mat4x4 extrinsics_mat)
+{
+    k4a_calibration_extrinsics_t extrinsics =
+        calibration.extrinsics[K4A_CALIBRATION_TYPE_DEPTH][K4A_CALIBRATION_TYPE_COLOR];
+
+    linmath::mat4x4_translate(extrinsics_mat,
+                              extrinsics.translation[0],
+                              extrinsics.translation[1],
+                              extrinsics.translation[2]);
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 3; j++)
+            extrinsics_mat[i][j] = extrinsics.rotation[3*j+i];
+}
 void get_intrinsics(k4a_calibration_t calibration, Mat &camMatrix, Mat &distCoeffs)
 {
     k4a_calibration_intrinsics_t intrinsics = calibration.color_camera_calibration.intrinsics;
@@ -49,7 +62,7 @@ void get_intrinsics(k4a_calibration_t calibration, Mat &camMatrix, Mat &distCoef
                   intrinsic_params.param.k6);
 }
 
-bool intrinsics_offline(const char *file_path, Mat &cameraMatrix, Mat &distCoeffs)
+bool intrinsics_extrinsics(const char *file_path, Mat &cameraMatrix, Mat &distCoeffs, linmath::mat4x4 extrinsics_mat)
 {
     k4a_playback_t playback_handle = NULL;
     if (k4a_playback_open(file_path, &playback_handle) != K4A_RESULT_SUCCEEDED)
@@ -66,6 +79,7 @@ bool intrinsics_offline(const char *file_path, Mat &cameraMatrix, Mat &distCoeff
         return false;
     }
     get_intrinsics(calibration, cameraMatrix, distCoeffs);
+    get_extrinsics(calibration, extrinsics_mat);
 
     k4a_playback_close(playback_handle);
     return true;
@@ -95,6 +109,10 @@ void rotate_by_x(linmath::mat4x4 rotated, linmath::mat4x4 translation) {
 class Charuco
 {
 public:
+    void get_extrinsics(linmath::mat4x4 se3)
+    {
+        linmath::mat4x4_dup(se3, m_extrinsics);
+    }
     void get_se3(linmath::mat4x4 se3)
     {
         linmath::mat4x4_dup(se3, m_se3);
@@ -112,7 +130,7 @@ public:
         }
         m_board_type = 4;
         init_board();
-        intrinsics_offline(input_path.c_str(), m_cameraMatrix, m_distCoeffs);
+        intrinsics_extrinsics(input_path.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
 
         detect_pose(input_path);
         se3_from_rvec_tvec();
@@ -143,6 +161,7 @@ private:
         else
             linmath::mat4x4_dup(m_se3, transformation);
 
+        m_se3[3][0] = m_se3[3][0] * -1; // reverse x-translation
         linmath::mat4x4_invert(m_se3_inverse, m_se3);
     }
 
@@ -212,6 +231,7 @@ private:
         else
             linmath::mat4x4_dup(m_se3, transformation);
 
+        m_se3[3][0] = m_se3[3][0] * -1;  // reverse x-translation
         linmath::mat4x4_invert(m_se3_inverse, m_se3);
     }
 
@@ -223,10 +243,9 @@ private:
     Mat m_cameraMatrix, m_distCoeffs;
     Vec3d m_rvec, m_tvec;
     linmath::mat4x4 m_se3, m_se3_inverse;
+    linmath::mat4x4 m_extrinsics;
 };
 
-
-    
-    } // namespace k4aviewer
+} // namespace k4aviewer
 
 #endif

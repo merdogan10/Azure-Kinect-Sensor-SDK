@@ -39,21 +39,6 @@ GLenum K4APointCloudVisualizer::InitializeTexture(std::shared_ptr<K4AViewerImage
     return K4AViewerImage::Create(texture, nullptr, m_dimensions, GL_RGBA);
 }
 
-void MatrixMultiply(linmath::mat4x4 out, linmath::mat4x4 a, linmath::mat4x4 b)
-{
-    linmath::mat4x4 atmp;
-    linmath::mat4x4 btmp;
-    linmath::mat4x4_dup(atmp, a);
-    linmath::mat4x4_dup(btmp, b);
-    linmath::mat4x4_mul(out, a, b);
-}
-
-float Radians(const float angle)
-{
-    constexpr float pi = 3.14159265358979323846f;
-    return angle / 180.f * pi;
-}
-
 PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared_ptr<K4AViewerImage> *texture,
                                                                      const k4a::capture &capture,
                                                                      const k4a::capture &capture2)
@@ -91,7 +76,6 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
 
     linmath::mat4x4 view_to_show;
     linmath::mat4x4_mul(view_to_show, m_view, m_se3);
-    //MatrixMultiply(view, m_view, m_se3);
 
     m_pointCloudRenderer.UpdateViewProjection(view_to_show, m_projection);
 

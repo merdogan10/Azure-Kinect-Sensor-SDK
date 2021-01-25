@@ -24,7 +24,7 @@
 #include "k4arecordingdockcontrol.h"
 #include "k4aviewerutil.h"
 #include "k4awindowmanager.h"
-#include "charuco.h"
+#include "calibration.h"
 #include "linmath.h"
 using namespace k4aviewer;
 
@@ -144,65 +144,57 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
     try
     {
         path;
-        string calibration_file3 =
+        string world2camera_file =
             "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\vicon_calibration\\cn03\\world2camera.txt";
-        string calibration_file6 =
+        string world2camera_file2 =
             "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\vicon_calibration\\cn06\\world2camera.txt";
         
-        string input_path = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\charuco_rotate\\cn03\\k4a_record.mkv";
-        k4a::playback recording = k4a::playback::open(input_path.c_str());
+        string input_video_path = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\charuco_rotate\\cn03\\k4a_record.mkv";
+        k4a::playback recording = k4a::playback::open(input_video_path.c_str());
 
-        string input_path2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\charuco_rotate\\cn06\\k4a_record.mkv";
-        k4a::playback recording2 = k4a::playback::open(input_path2.c_str());
+        string input_video_path2 =
+            "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\charuco_rotate\\cn06\\k4a_record.mkv";
+        k4a::playback recording2 = k4a::playback::open(input_video_path2.c_str());
 
         linmath::mat4x4 se3, se3_2;
         linmath::mat4x4 c2c, c2c_id;
         
-        int case_no = 1;
-        bool is_quat = false;
-        bool rotate_x = false;
+        CalibrationType calibration_type = CalibrationType::Quaternion;
+        int case_no = 3; // Best cases for Charuco: 1, Quaternion: 3
 
-        Charuco board(input_path, calibration_file3, is_quat, rotate_x);
-        Charuco board2(input_path2, calibration_file6, is_quat, rotate_x);
+        Calibration calib(input_video_path, world2camera_file, calibration_type);
+        Calibration calib2(input_video_path2, world2camera_file2, calibration_type);
         
         // If camera2camera is used, use identity matrix for the other view
         linmath::mat4x4_identity(c2c_id);
         switch (case_no)
         {
         case 0:  // se3_2' * se3
-            board.get_se3(se3);
-            board2.get_se3_inverse(se3_2);
+            calib.get_se3(se3);
+            calib2.get_se3_inverse(se3_2);
             linmath::mat4x4_mul(c2c, se3_2, se3);
             break;
         case 1:  // se3 * se3_2'
-            board.get_se3(se3);
-            board2.get_se3_inverse(se3_2);
+            calib.get_se3(se3);
+            calib2.get_se3_inverse(se3_2);
             linmath::mat4x4_mul(c2c, se3, se3_2);
             break;
         case 2:  // se3_2 * se3'
-            board.get_se3_inverse(se3);
-            board2.get_se3(se3_2);
+            calib.get_se3_inverse(se3);
+            calib2.get_se3(se3_2);
             linmath::mat4x4_mul(c2c, se3_2, se3);
             break;
         case 3:  // se3' * se3_2
-            board.get_se3_inverse(se3);
-            board2.get_se3(se3_2);
+            calib.get_se3_inverse(se3);
+            calib2.get_se3(se3_2);
             linmath::mat4x4_mul(c2c, se3, se3_2);
             break;
         default:
             break;
         }
 
-        // If world2camera is used, send both of them for the views
-        //board.get_se3(se3);
-        //board2.get_se3(se3_2);
-
-        //board.get_se3_inverse(se3);
-        //board.get_se3_inverse(se3_2);
-
-
         K4AWindowManager::Instance().PushLeftDockControl(std14::make_unique<K4ARecordingDockControl>(
-            input_path, std::move(recording), std::move(recording2), c2c_id, c2c));
+            input_video_path, std::move(recording), std::move(recording2), c2c_id, c2c));
     }
     catch (const k4a::error &e)
     {

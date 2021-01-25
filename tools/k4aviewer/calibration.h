@@ -68,27 +68,28 @@ public:
     }
     /**
     * \brief Main calibration pipeline
-    * \param input_video_path
-    * \param calib_file_name path to world2camera calibration file
+    * \param input_video
+    * \param world2camera_file path to world2camera calibration file
+    * \param icp_file path to icp calibration file
     * \param calibration_type can be only element of enum class CalibrationType
     */
-    Calibration(string input_video_path, string calib_file_name, CalibrationType calibration_type)
+    Calibration(string input_video, string world2camera_file, string icp_file, CalibrationType calibration_type)
     {
         switch (calibration_type)
         {
         case k4aviewer::CalibrationType::Quaternion:
-            se3_from_quat(calib_file_name);
+            se3_from_quat(world2camera_file);
             break;
 
         case k4aviewer::CalibrationType::Charuco:
             init_board();
-            intrinsics_extrinsics(input_video_path.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
-            detect_pose(input_video_path);
+            intrinsics_extrinsics(input_video.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
+            detect_pose(input_video);
             se3_from_rvec_tvec();
             break;
 
         case k4aviewer::CalibrationType::ICP:
-            throw std::runtime_error("Not implemented yet!");
+            se3_from_icp(icp_file);
             break;
 
         default:
@@ -99,6 +100,26 @@ public:
     ~Calibration() = default;
 
 private:
+    /**
+     * \brief generates se3 from icp transformation file
+     * \param file_name path to icp file
+     */
+    void se3_from_icp(string file_name) {
+        ifstream read(file_name);
+        float x;
+        linmath::mat4x4 transformation;
+        for (int i = 0; i <= 3; i++)
+            for (int j = 0; j <= 3; j++)
+            {
+                read >> x;
+                if (j == 3 && i != 3)
+                    x /= 1000; // given in mm by Cloud Compare
+                transformation[j][i] = x;
+            }
+        linmath::mat4x4_dup(m_se3, transformation);
+        m_se3[3][0] = m_se3[3][0] * -1; // reverse x-translation
+        linmath::mat4x4_invert(m_se3_inverse, m_se3);
+    }
     /**
     * \brief generates se3 from VICON world2camera file
     * \param file_name path to world2camera file

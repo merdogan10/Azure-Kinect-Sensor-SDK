@@ -45,6 +45,20 @@ void rotate_by_x(linmath::mat4x4 rotated, linmath::mat4x4 translation) {
     linmath::mat4x4_from_quat(rotateMatrix, rotateQuat);
     linmath::mat4x4_mul(rotated, translation, rotateMatrix);
 }
+/**
+ * \brief helper function to reverse x-dimension.
+ * \param multiply_by_right indicates which side to be multiplied
+ */
+void reverse_x(linmath::mat4x4 result, linmath::mat4x4 input, bool multiply_by_right = true) {
+    linmath::mat4x4 transform_x, temp_input;
+    linmath::mat4x4_dup(temp_input, input);
+    linmath::mat4x4_identity(transform_x);
+    transform_x[0][0] = -1;
+    if (multiply_by_right)
+        linmath::mat4x4_mul(result, temp_input, transform_x); // Quaternion, ICP
+    else
+        linmath::mat4x4_mul(result, transform_x, temp_input); // Charuco
+}
 enum class CalibrationType
 {
     Quaternion,
@@ -96,6 +110,8 @@ public:
             throw std::runtime_error("Selected an unsupported calibration type!");
             break;
         }
+
+        linmath::mat4x4_invert(m_se3_inverse, m_se3);
     }
     ~Calibration() = default;
 
@@ -117,8 +133,8 @@ private:
                 transformation[j][i] = x;
             }
         linmath::mat4x4_dup(m_se3, transformation);
-        m_se3[3][0] = m_se3[3][0] * -1; // reverse x-translation
-        linmath::mat4x4_invert(m_se3_inverse, m_se3);
+
+        reverse_x(m_se3, m_se3, true);
     }
     /**
     * \brief generates se3 from VICON world2camera file
@@ -144,9 +160,8 @@ private:
 
         // Convert left-handed VICON axis to right-handed Azure Kinect axis
         rotate_by_x(m_se3, transformation);
-
-        m_se3[3][0] = m_se3[3][0] * -1; // reverse x-translation
-        linmath::mat4x4_invert(m_se3_inverse, m_se3);
+        
+        reverse_x(m_se3, m_se3, true);
     }
 
     /**
@@ -295,9 +310,7 @@ private:
 
         linmath::mat4x4_dup(m_se3, transformation);
 
-        m_se3[3][0] = m_se3[3][0] * -1; // reverse x-translation
-        
-        linmath::mat4x4_invert(m_se3_inverse, m_se3);
+        reverse_x(m_se3, m_se3, false);
     }
 
     Ptr<aruco::Dictionary> m_dictionary;

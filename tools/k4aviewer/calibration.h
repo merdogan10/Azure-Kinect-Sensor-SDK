@@ -33,19 +33,6 @@ float Radians(const float angle)
     return angle / 180.f * pi;
 }
 /**
-* \brief helper function to rotate x-dimension by 180 degrees.
-* 
-* mainly used to convert VICON left-handed axis to Azure Kinect right-handed axis
-*/
-void rotate_by_x(linmath::mat4x4 rotated, linmath::mat4x4 translation) {
-    linmath::quat rotateQuat;
-    linmath::vec3 rotateAxis{ 1.f, 0.f, 0.f };
-    linmath::mat4x4 rotateMatrix;
-    linmath::quat_rotate(rotateQuat, Radians(180), rotateAxis);
-    linmath::mat4x4_from_quat(rotateMatrix, rotateQuat);
-    linmath::mat4x4_mul(rotated, translation, rotateMatrix);
-}
-/**
  * \brief helper function to reverse x-dimension.
  * \param multiply_by_right indicates which side to be multiplied
  */
@@ -89,6 +76,7 @@ public:
     */
     Calibration(string input_video, string world2camera_file, string icp_file, CalibrationType calibration_type)
     {
+        intrinsics_extrinsics(input_video.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
         switch (calibration_type)
         {
         case k4aviewer::CalibrationType::Quaternion:
@@ -97,7 +85,6 @@ public:
 
         case k4aviewer::CalibrationType::Charuco:
             init_board();
-            intrinsics_extrinsics(input_video.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
             detect_pose(input_video);
             se3_from_rvec_tvec();
             break;
@@ -133,7 +120,6 @@ private:
                 transformation[j][i] = x;
             }
         linmath::mat4x4_dup(m_se3, transformation);
-
         reverse_x(m_se3, m_se3, true);
     }
     /**
@@ -159,8 +145,7 @@ private:
         transformation[3][2] = tz;
 
         // Convert left-handed VICON axis to right-handed Azure Kinect axis
-        rotate_by_x(m_se3, transformation);
-        
+        linmath::mat4x4_rotate_X(m_se3, transformation, Radians(180));
         reverse_x(m_se3, m_se3, true);
     }
 
@@ -223,11 +208,11 @@ private:
     {
         k4a_calibration_extrinsics_t extrinsics =
             calibration.extrinsics[K4A_CALIBRATION_TYPE_COLOR][K4A_CALIBRATION_TYPE_DEPTH];
-
+        float units_per_meter = 1000.0f;
         linmath::mat4x4_translate(extrinsics_mat,
-                                  extrinsics.translation[0],
-                                  extrinsics.translation[1],
-                                  extrinsics.translation[2]);
+                                  extrinsics.translation[0] / units_per_meter,
+                                  extrinsics.translation[1] / units_per_meter,
+                                  extrinsics.translation[2] / units_per_meter);
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 extrinsics_mat[i][j] = extrinsics.rotation[3 * j + i]; // linmath uses column index first
@@ -309,7 +294,6 @@ private:
                 transformation[i][j] = (float)rotation_cv.at<double>(j, i); // linmath uses column index first
 
         linmath::mat4x4_dup(m_se3, transformation);
-
         reverse_x(m_se3, m_se3, false);
     }
 

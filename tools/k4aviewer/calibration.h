@@ -33,18 +33,16 @@ float Radians(const float angle)
     return angle / 180.f * pi;
 }
 /**
- * \brief helper function to reverse x-dimension.
- * \param multiply_by_right indicates which side to be multiplied
+ * \brief reverse x-dimension on both side of the matrix to get into OpenGL perspective.
  */
-void reverse_x(linmath::mat4x4 result, linmath::mat4x4 input, bool multiply_by_right = true) {
+void move_into_GL(linmath::mat4x4 result, linmath::mat4x4 input)
+{
     linmath::mat4x4 transform_x, temp_input;
     linmath::mat4x4_dup(temp_input, input);
     linmath::mat4x4_identity(transform_x);
     transform_x[0][0] = -1;
-    if (multiply_by_right)
-        linmath::mat4x4_mul(result, temp_input, transform_x); // Quaternion, ICP
-    else
-        linmath::mat4x4_mul(result, transform_x, temp_input); // Charuco
+    linmath::mat4x4_mul(temp_input, temp_input, transform_x);
+    linmath::mat4x4_mul(result, transform_x, temp_input);
 }
 enum class CalibrationType
 {
@@ -84,7 +82,7 @@ public:
             break;
 
         case k4aviewer::CalibrationType::Charuco:
-            init_board();
+            init_board(m_board_type, m_dictionary, m_board, m_params);
             detect_pose(input_video);
             se3_from_rvec_tvec();
             break;
@@ -100,8 +98,65 @@ public:
 
         linmath::mat4x4_invert(m_se3_inverse, m_se3);
     }
+    Calibration(){};
     ~Calibration() = default;
+    /**
+     * \brief initializes charuco board
+     *
+     * only boards with 5x7, 14x9, 4x3 are supported. 4x3 board is the default one.
+     */
+    void init_board(int board_type,
+                    Ptr<aruco::Dictionary> &dictionary,
+                    Ptr<aruco::CharucoBoard> &board,
+                    Ptr<aruco::DetectorParameters> &params)
+    {
+        switch (board_type)
+        {
+        case 5:
+            dictionary = aruco::getPredefinedDictionary(aruco::DICT_6X6_250);
+            board = aruco::CharucoBoard::create(5, 7, 0.04f, 0.02f, dictionary);
+            break;
+        case 14:
+            dictionary = aruco::getPredefinedDictionary(aruco::DICT_5X5_250);
+            board = aruco::CharucoBoard::create(14, 9, 0.02f, 0.01556f, dictionary);
+            break;
+        case 4:
+            dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
+            board = aruco::CharucoBoard::create(4, 3, 0.053f, 0.04f, dictionary);
+            break;
+        default:
+            throw std::runtime_error("Invalid board!");
+            break;
+        }
+        params = aruco::DetectorParameters::create();
+    }
+    /**
+     * \brief get intrinsic calibration from Azure Kinect device as charuco needs
+     */
+    void get_intrinsics(k4a_calibration_t calibration, Mat &camMatrix, Mat &distCoeffs)
+    {
+        k4a_calibration_intrinsics_t intrinsics = calibration.color_camera_calibration.intrinsics;
+        k4a_calibration_intrinsic_parameters_t intrinsic_params = intrinsics.parameters;
 
+        camMatrix = (Mat_<float>(3, 3) << intrinsic_params.param.fx,
+                     0,
+                     intrinsic_params.param.cx,
+                     0,
+                     intrinsic_params.param.fy,
+                     intrinsic_params.param.cy,
+                     0,
+                     0,
+                     1);
+
+        distCoeffs = (Mat_<float>(1, 8) << intrinsic_params.param.k1,
+                      intrinsic_params.param.k2,
+                      intrinsic_params.param.p1,
+                      intrinsic_params.param.p2,
+                      intrinsic_params.param.k3,
+                      intrinsic_params.param.k4,
+                      intrinsic_params.param.k5,
+                      intrinsic_params.param.k6);
+    }
 private:
     /**
      * \brief generates se3 from icp transformation file
@@ -120,7 +175,6 @@ private:
                 transformation[j][i] = x;
             }
         linmath::mat4x4_dup(m_se3, transformation);
-        reverse_x(m_se3, m_se3, true);
     }
     /**
     * \brief generates se3 from VICON world2camera file
@@ -146,35 +200,6 @@ private:
 
         // Convert left-handed VICON axis to right-handed Azure Kinect axis
         linmath::mat4x4_rotate_X(m_se3, transformation, Radians(180));
-        reverse_x(m_se3, m_se3, true);
-    }
-
-    /**
-    * \brief initializes charuco board
-    * 
-    * only boards with 5x7, 14x9, 4x3 are supported. 4x3 board is the default one.
-    */
-    void init_board()
-    {
-        switch (m_board_type)
-        {
-        case 5:
-            m_dictionary = aruco::getPredefinedDictionary(aruco::DICT_6X6_250);
-            m_board = aruco::CharucoBoard::create(5, 7, 0.04f, 0.02f, m_dictionary);
-            break;
-        case 14:
-            m_dictionary = aruco::getPredefinedDictionary(aruco::DICT_5X5_250);
-            m_board = aruco::CharucoBoard::create(14, 9, 0.02f, 0.01556f, m_dictionary);
-            break;
-        case 4:
-            m_dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
-            m_board = aruco::CharucoBoard::create(4, 3, 0.053f, 0.04f, m_dictionary);
-            break;
-        default:
-            throw std::runtime_error("Invalid board!");
-            break;
-        }
-        m_params = aruco::DetectorParameters::create();
     }
 
     /**
@@ -216,34 +241,6 @@ private:
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 extrinsics_mat[i][j] = extrinsics.rotation[3 * j + i]; // linmath uses column index first
-    }
-
-    /**
-    * \brief get intrinsic calibration from Azure Kinect device as charuco needs
-    */
-    void get_intrinsics(k4a_calibration_t calibration, Mat &camMatrix, Mat &distCoeffs)
-    {
-        k4a_calibration_intrinsics_t intrinsics = calibration.color_camera_calibration.intrinsics;
-        k4a_calibration_intrinsic_parameters_t intrinsic_params = intrinsics.parameters;
-
-        camMatrix = (Mat_<float>(3, 3) << intrinsic_params.param.fx,
-                     0,
-                     intrinsic_params.param.cx,
-                     0,
-                     intrinsic_params.param.fy,
-                     intrinsic_params.param.cy,
-                     0,
-                     0,
-                     1);
-
-        distCoeffs = (Mat_<float>(1, 8) << intrinsic_params.param.k1,
-                      intrinsic_params.param.k2,
-                      intrinsic_params.param.p1,
-                      intrinsic_params.param.p2,
-                      intrinsic_params.param.k3,
-                      intrinsic_params.param.k4,
-                      intrinsic_params.param.k5,
-                      intrinsic_params.param.k6);
     }
 
     /**
@@ -294,7 +291,6 @@ private:
                 transformation[i][j] = (float)rotation_cv.at<double>(j, i); // linmath uses column index first
 
         linmath::mat4x4_dup(m_se3, transformation);
-        reverse_x(m_se3, m_se3, false);
     }
 
     Ptr<aruco::Dictionary> m_dictionary;

@@ -168,7 +168,7 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
         linmath::mat4x4 se3, se3_2;
         linmath::mat4x4 c2c, c2c_id;
         
-        CalibrationType calibration_type = CalibrationType::Quaternion;
+        CalibrationType calibration_type = CalibrationType::Charuco;
 
         Calibration calib(input_video_path, world2camera_file, icp_file, calibration_type);
         Calibration calib2(input_video_path2, world2camera_file2, icp_file2, calibration_type);
@@ -192,7 +192,9 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
             linmath::mat4x4_mul(c2c, se3, se3_2);
             break;
         }
-
+        
+        // Move c2c into OpenGL perspective
+        move_into_GL(c2c, c2c);
         K4AWindowManager::Instance().PushLeftDockControl(std14::make_unique<K4ARecordingDockControl>(
             input_video_path, std::move(recording), std::move(recording2), c2c_id, c2c));
     }

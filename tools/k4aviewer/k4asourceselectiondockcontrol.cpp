@@ -25,6 +25,7 @@
 #include "k4aviewerutil.h"
 #include "k4awindowmanager.h"
 #include "calibration.h"
+#include "projection.h"
 #include "linmath.h"
 using namespace k4aviewer;
 
@@ -193,6 +194,10 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
             break;
         }
         
+        string test_video_path = captures_folder + "charuco_move\\cn03\\k4a_record.mkv";
+        string test_video_path2 = captures_folder + "charuco_move\\cn06\\k4a_record.mkv";
+        Projection proj(input_video_path, input_video_path2, c2c);
+
         // Move c2c into OpenGL perspective
         move_into_GL(c2c, c2c);
         K4AWindowManager::Instance().PushLeftDockControl(std14::make_unique<K4ARecordingDockControl>(

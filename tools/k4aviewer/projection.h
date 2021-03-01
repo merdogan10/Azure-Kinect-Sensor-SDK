@@ -19,7 +19,7 @@ using namespace std;
 namespace k4aviewer
 {
 /**
- * \brif show image with given name
+ * \brief show image with given name
  */
 void show_image(string window_name, Mat image)
 {
@@ -35,6 +35,8 @@ void show_image(string window_name, Mat image)
 
 enum class ProjectionMode
 {
+    Outer_3D_raycast_homography,
+    Outer_3D_homography,
     Inner_3D,
     Inner_2D_calculated_corners,
     Inner_2D_detected_corners
@@ -85,34 +87,56 @@ public:
             calculate_charuco_board_corners(m_charuco_1, m_board_corners_1, m_board_corners_3d_1, m_calculated_ids_1);
             calculate_charuco_board_corners(m_charuco_2, m_board_corners_2, m_board_corners_3d_2, m_calculated_ids_2);
 
-            raycast(video_2.m_calibration,
-                    video_2.m_depth_image,
-                    video_2.m_depthMat,
-                    m_board_corners_1,
-                    m_raycast_corners_1);
-            raycast(video_2.m_calibration,
-                    video_2.m_depth_image,
-                    video_2.m_depthMat,
-                    m_board_corners_2,
-                    m_raycast_corners_2);
-
-            // extract board by homography
-            project_3d_to_3d(m_charuco_2,
-                             m_board_corners_3d_2,
-                             m_projected_board_corners_3d,
-                             m_projected_board_corners_from_3d);
-            homography(m_projected_board_corners_from_3d, video_1.m_colorMat, m_warpMat_1, "1");
-            homography(m_board_corners_2, video_2.m_colorMat, m_warpMat_2, "2");
-            // overlay
-            double alpha = 0.8; double beta_value;
+            Mat overlay_image;
+            double alpha = 0.8;
+            double beta_value;
             beta_value = (1.0 - alpha);
-            Mat dst;
-            addWeighted(m_warpMat_1, alpha, m_warpMat_2, beta_value, 0.0, dst);
-            show_image("overlay", dst);
 
-            ProjectionMode mode = ProjectionMode::Inner_2D_detected_corners;
+            ProjectionMode mode = ProjectionMode::Outer_3D_raycast_homography;
             switch (mode)
             {
+            case k4aviewer::ProjectionMode::Outer_3D_raycast_homography:
+                // 3d projection of board corners
+                project_3d_to_3d(m_charuco_2,
+                                 m_board_corners_3d_2,
+                                 m_projected_board_corners_3d,
+                                 m_projected_board_corners_from_3d);
+                raycast(video_1.m_calibration,
+                        video_1.m_depth_image,
+                        video_1.m_depthMat,
+                        m_projected_board_corners_from_3d,
+                        m_raycast_corners_1);
+                raycast(video_2.m_calibration,
+                        video_2.m_depth_image,
+                        video_2.m_depthMat,
+                        m_board_corners_2,
+                        m_raycast_corners_2);
+                // extract board by homography
+                homography(m_raycast_corners_1, video_1.m_colorMat, m_warpMat_1);
+                homography(m_board_corners_2, video_2.m_colorMat, m_warpMat_2);
+                // overlay
+                addWeighted(m_warpMat_1, alpha, m_warpMat_2, beta_value, 0.0, overlay_image);
+                show_image("1", m_warpMat_1);
+                show_image("2", m_warpMat_2);
+                show_image("overlay", overlay_image);
+                break;
+
+            case k4aviewer::ProjectionMode::Outer_3D_homography:
+                // 3d projection of board corners
+                project_3d_to_3d(m_charuco_2,
+                                 m_board_corners_3d_2,
+                                 m_projected_board_corners_3d,
+                                 m_projected_board_corners_from_3d);
+                // extract board by homography
+                homography(m_projected_board_corners_from_3d, video_1.m_colorMat, m_warpMat_1);
+                homography(m_board_corners_2, video_2.m_colorMat, m_warpMat_2);
+                // overlay
+                addWeighted(m_warpMat_1, alpha, m_warpMat_2, beta_value, 0.0, overlay_image);
+                show_image("1", m_warpMat_1);
+                show_image("2", m_warpMat_2);
+                show_image("overlay", overlay_image);
+                break;
+
             case k4aviewer::ProjectionMode::Inner_3D:
                 // 3d projection of calculated corners
                 project_3d_to_3d(m_charuco_2,
@@ -181,7 +205,7 @@ public:
         video_2.close_playback();
     }
 
-    void homography(vector<Point2f> &corners, Mat &color_image, Mat &warped_image, string str) {
+    void homography(vector<Point2f> &corners, Mat &color_image, Mat &warped_image) {
         vector<Point2f> new_corners;
         new_corners.push_back(Point2f(640, 480));
         new_corners.push_back(Point2f(640, 0));
@@ -189,10 +213,12 @@ public:
         new_corners.push_back(Point2f(0, 480));
         Mat H = findHomography(corners, new_corners);
         warpPerspective(color_image, warped_image, H, Size(640, 480));
-        show_image(str, warped_image);
     }
 
-    void project_3d_to_3d(Charuco &charuco, vector<Point3f> &old_corners, vector<Point3f> &new_corners_3d, vector<Point2f> &new_corners)
+    void project_3d_to_3d(Charuco &charuco,
+                          vector<Point3f> &old_corners,
+                          vector<Point3f> &new_corners_3d,
+                          vector<Point2f> &new_corners)
     {
         // 3d projection by camera to camera matrix
         new_corners_3d.clear();

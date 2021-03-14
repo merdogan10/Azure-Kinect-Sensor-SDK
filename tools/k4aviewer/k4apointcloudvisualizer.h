@@ -79,7 +79,8 @@ private:
                                                     OpenGL::Texture &xyzTexture,
                                                     k4a::capture &lastCapture,
                                                     k4a::image &pointCloudColorization,
-                                                    GpuDepthToPointCloudConverter &pointCloudConverter);
+                                                    GpuDepthToPointCloudConverter &pointCloudConverter,
+                                                    int &color);
 
     PointCloudVisualizationResult
     K4APointCloudVisualizer::SetColorizationStrategyIn(PointCloudRenderer &pointCloudRenderer,
@@ -91,7 +92,8 @@ private:
                                                        GpuDepthToPointCloudConverter &pointCloudConverter,
                                                        const k4a::calibration &calibrationData,
                                                        k4a::image &colorXyTable,
-                                                       k4a::image &depthXyTable);
+                                                       k4a::image &depthXyTable,
+                                                       int &color);
 
     std::pair<DepthPixel, DepthPixel> m_expectedValueRange;
     ImageDimensions m_dimensions;
@@ -132,6 +134,8 @@ private:
     // Format is XYZA, where A (the alpha channel) is unused.
     //
     OpenGL::Texture m_xyzTexture, m_xyzTexture2;
+
+    int m_color = 1, m_color2 = 2; // 0: Blue, 1: Green, 2: Red
 
     GpuDepthToPointCloudConverter m_pointCloudConverter, m_pointCloudConverter2;
 

@@ -88,7 +88,8 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
                                                              m_xyzTexture,
                                                              m_lastCapture,
                                                              m_pointCloudColorization,
-                                                             m_pointCloudConverter);
+                                                             m_pointCloudConverter,
+                                                             m_color);
     if (result != PointCloudVisualizationResult::Success)
     {
         return result;
@@ -105,13 +106,14 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
     m_pointCloudRenderer2.UpdateViewProjection(view_to_show2, m_projection);
 
     PointCloudVisualizationResult result2 = UpdatePointClouds(capture2,
-                                                             m_pointCloudRenderer2,
-                                                             m_transformation2,
-                                                             m_transformedDepthImage2,
-                                                             m_xyzTexture2,
-                                                             m_lastCapture2,
-                                                             m_pointCloudColorization2,
-                                                             m_pointCloudConverter2);
+                                                              m_pointCloudRenderer2,
+                                                              m_transformation2,
+                                                              m_transformedDepthImage2,
+                                                              m_xyzTexture2,
+                                                              m_lastCapture2,
+                                                              m_pointCloudColorization2,
+                                                              m_pointCloudConverter2,
+                                                              m_color2);
     if (result2 != PointCloudVisualizationResult::Success)
     {
         return result2;
@@ -144,8 +146,8 @@ void K4APointCloudVisualizer::ResetPosition()
 {
     m_viewControl.ResetPosition();
 }
-PointCloudVisualizationResult K4APointCloudVisualizer::SetColorizationStrategyIn(
-                                                   PointCloudRenderer &pointCloudRenderer,
+PointCloudVisualizationResult
+K4APointCloudVisualizer::SetColorizationStrategyIn(PointCloudRenderer &pointCloudRenderer,
                                                    k4a::transformation &transformation,
                                                    k4a::image &transformedDepthImage,
                                                    OpenGL::Texture &xyzTexture,
@@ -154,7 +156,8 @@ PointCloudVisualizationResult K4APointCloudVisualizer::SetColorizationStrategyIn
                                                    GpuDepthToPointCloudConverter &pointCloudConverter,
                                                    const k4a::calibration &calibrationData,
                                                    k4a::image &colorXyTable,
-                                                   k4a::image &depthXyTable)
+                                                   k4a::image &depthXyTable,
+                                                   int &color)
 {
     pointCloudRenderer.EnableShading(m_colorizationStrategy == ColorizationStrategy::Shaded);
 
@@ -202,7 +205,8 @@ PointCloudVisualizationResult K4APointCloudVisualizer::SetColorizationStrategyIn
                                  xyzTexture,
                                  lastCapture,
                                  pointCloudColorization,
-                                 pointCloudConverter);
+                                 pointCloudConverter,
+                                 color);
     }
 
     return PointCloudVisualizationResult::Success;
@@ -226,18 +230,20 @@ PointCloudVisualizationResult K4APointCloudVisualizer::SetColorizationStrategy(C
                               m_pointCloudConverter,
                               m_calibrationData,
                               m_colorXyTable,
-                              m_depthXyTable);
+                              m_depthXyTable,
+                              m_color);
 
     return SetColorizationStrategyIn(m_pointCloudRenderer2,
-                              m_transformation2,
-                              m_transformedDepthImage2,
-                              m_xyzTexture2,
-                              m_lastCapture2,
-                              m_pointCloudColorization2,
-                              m_pointCloudConverter2,
-                              m_calibrationData2,
-                              m_colorXyTable2,
-                              m_depthXyTable2);
+                                     m_transformation2,
+                                     m_transformedDepthImage2,
+                                     m_xyzTexture2,
+                                     m_lastCapture2,
+                                     m_pointCloudColorization2,
+                                     m_pointCloudConverter2,
+                                     m_calibrationData2,
+                                     m_colorXyTable2,
+                                     m_depthXyTable2,
+                                     m_color2);
 }
 
 void K4APointCloudVisualizer::SetPointSize(int size)
@@ -282,14 +288,16 @@ K4APointCloudVisualizer::K4APointCloudVisualizer(const bool enableColorPointClou
     SetColorizationStrategy(m_colorizationStrategy);
 }
 
-PointCloudVisualizationResult K4APointCloudVisualizer::UpdatePointClouds(const k4a::capture &capture,
-                                                                         PointCloudRenderer &pointCloudRenderer,
-                                                                         k4a::transformation &transformation,
-                                                                         k4a::image &transformedDepthImage,
-                                                                         OpenGL::Texture &xyzTexture,
-                                                                         k4a::capture &lastCapture,
-                                                                         k4a::image &pointCloudColorization,
-                                                                         GpuDepthToPointCloudConverter &pointCloudConverter)
+PointCloudVisualizationResult
+K4APointCloudVisualizer::UpdatePointClouds(const k4a::capture &capture,
+                                           PointCloudRenderer &pointCloudRenderer,
+                                           k4a::transformation &transformation,
+                                           k4a::image &transformedDepthImage,
+                                           OpenGL::Texture &xyzTexture,
+                                           k4a::capture &lastCapture,
+                                           k4a::image &pointCloudColorization,
+                                           GpuDepthToPointCloudConverter &pointCloudConverter,
+                                           int &color)
 {
     k4a::image depthImage = capture.get_depth_image();
     if (!depthImage)
@@ -335,6 +343,26 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdatePointClouds(const k
     if (m_colorizationStrategy == ColorizationStrategy::Color)
     {
         pointCloudColorization = std::move(colorImage);
+    }
+    else if (m_colorizationStrategy == ColorizationStrategy::Simple)
+    {
+        DepthPixel *srcPixel = reinterpret_cast<DepthPixel *>(depthImage.get_buffer());
+        BgraPixel *dstPixel = reinterpret_cast<BgraPixel *>(pointCloudColorization.get_buffer());
+        const BgraPixel *endPixel = dstPixel + (depthImage.get_size() / sizeof(DepthPixel));
+
+        while (dstPixel != endPixel)
+        {
+            constexpr uint8_t PixelMax = std::numeric_limits<uint8_t>::max();
+            BgraPixel result = { 0, 0, 0, PixelMax };
+            if (color == 1)
+                result.Green = static_cast<uint8_t>(1 * PixelMax);
+            else if (color == 2)
+                result.Red = static_cast<uint8_t>(1 * PixelMax);
+            *dstPixel = result;
+
+            ++dstPixel;
+            ++srcPixel;
+        }
     }
     else
     {

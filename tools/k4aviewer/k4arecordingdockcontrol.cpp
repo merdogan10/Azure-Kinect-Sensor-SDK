@@ -43,14 +43,15 @@ std::string SafeGetTag(const k4a::playback &recording, const char *tagName)
 K4ARecordingDockControl::K4ARecordingDockControl(std::string &path,
                                                  k4a::playback &&recording,
                                                  k4a::playback &&recording2,
-                                                 linmath::mat4x4 se3,
-                                                 linmath::mat4x4 se3_2) :
+                                                 linmath::mat4x4 se3_depth,
+                                                 linmath::mat4x4 se3_color) :
     m_filenameLabel(std::move(path))
 {
-    linmath::mat4x4_dup(m_se3, se3);
-    linmath::mat4x4_dup(m_se3_2, se3_2);
-    m_playbackThreadState.SeekTimestamp = InvalidSeekTime;
-    m_playbackThreadState2.SeekTimestamp = InvalidSeekTime;
+    linmath::mat4x4_dup(m_se3_depth, se3_depth);
+    linmath::mat4x4_dup(m_se3_color, se3_color);
+    int ss_seek = 8000 * 1000; // seek to 8th second
+    m_playbackThreadState.SeekTimestamp = std::chrono::microseconds(ss_seek);
+    m_playbackThreadState2.SeekTimestamp = std::chrono::microseconds(ss_seek);
 
     // Recording config
     //
@@ -527,8 +528,8 @@ void K4ARecordingDockControl::SetViewType(K4AWindowSet::ViewType viewType)
                                                 m_recordConfiguration.color_track_enabled,
                                                 std::move(calibration2),
                                                 &m_playbackThreadState2.CaptureDataSource,
-                                                m_se3,
-                                                m_se3_2);
+                                                m_se3_depth,
+                                                m_se3_color);
         }
         catch (const k4a::error &e)
         {

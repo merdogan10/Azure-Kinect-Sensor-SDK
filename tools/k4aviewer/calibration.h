@@ -49,13 +49,21 @@ enum class CalibrationType
 class Calibration
 {
 public:
-    void get_se3(linmath::mat4x4 se3)
+    void get_se3_color(linmath::mat4x4 se3)
     {
-        linmath::mat4x4_dup(se3, m_se3);
+        linmath::mat4x4_dup(se3, m_se3_color);
     }
-    void get_se3_inverse(linmath::mat4x4 se3_inverse)
+    void get_se3_color_inverse(linmath::mat4x4 se3_inverse)
     {
-        linmath::mat4x4_dup(se3_inverse, m_se3_inverse);
+        linmath::mat4x4_dup(se3_inverse, m_se3_color_inverse);
+    }
+    void get_se3_depth(linmath::mat4x4 se3)
+    {
+        linmath::mat4x4_dup(se3, m_se3_depth);
+    }
+    void get_se3_depth_inverse(linmath::mat4x4 se3_inverse)
+    {
+        linmath::mat4x4_dup(se3_inverse, m_se3_depth_inverse);
     }
     /**
     * \brief Main calibration pipeline
@@ -87,7 +95,8 @@ public:
             break;
         }
 
-        linmath::mat4x4_invert(m_se3_inverse, m_se3);
+        linmath::mat4x4_invert(m_se3_color_inverse, m_se3_color);
+        linmath::mat4x4_invert(m_se3_depth_inverse, m_se3_depth);
     }
     Calibration(){};
     ~Calibration() = default;
@@ -109,7 +118,8 @@ private:
                     x /= 1000; // given in mm by Cloud Compare
                 transformation[j][i] = x;
             }
-        linmath::mat4x4_dup(m_se3, transformation);
+        linmath::mat4x4_dup(m_se3_depth, transformation);
+        linmath::mat4x4_mul(m_se3_color, m_se3_depth, m_charuco.m_extrinsics);
     }
     /**
     * \brief generates se3 from VICON world2camera file
@@ -134,7 +144,8 @@ private:
         transformation[3][2] = tz;
 
         // Convert left-handed VICON axis to right-handed Azure Kinect axis
-        linmath::mat4x4_rotate_X(m_se3, transformation, Radians(180));
+        linmath::mat4x4_rotate_X(m_se3_depth, transformation, Radians(180));
+        linmath::mat4x4_mul(m_se3_color, m_se3_depth, m_charuco.m_extrinsics);
     }
 
     /**
@@ -154,13 +165,13 @@ private:
             for (int j = 0; j < 3; j++)
                 transformation[i][j] = (float)rotation_cv.at<double>(j, i); // linmath uses column index first
 
-        linmath::mat4x4_dup(m_se3, transformation);
-        //linmath::mat4x4_mul(m_se3, m_extrinsics, m_se3);
+        linmath::mat4x4_dup(m_se3_color, transformation);
+        linmath::mat4x4_mul(m_se3_depth, m_charuco.m_extrinsics, m_se3_color);
     }
 
     Charuco m_charuco;
-    linmath::mat4x4 m_se3, m_se3_inverse;
-    linmath::mat4x4 m_extrinsics;
+    linmath::mat4x4 m_se3_color, m_se3_color_inverse;
+    linmath::mat4x4 m_se3_depth, m_se3_depth_inverse;
 };
 
 } // namespace k4aviewer

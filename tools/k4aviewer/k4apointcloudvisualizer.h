@@ -62,8 +62,8 @@ public:
     K4APointCloudVisualizer(bool enableColorPointCloud,
                             const k4a::calibration &calibrationData,
                             const k4a::calibration &calibrationData2,
-                            linmath::mat4x4 se3,
-                            linmath::mat4x4 se3_2);
+                            linmath::mat4x4 se3_depth,
+                            linmath::mat4x4 se3_color);
     ~K4APointCloudVisualizer() = default;
 
     K4APointCloudVisualizer(const K4APointCloudVisualizer &) = delete;
@@ -107,8 +107,8 @@ private:
 
     linmath::mat4x4 m_projection{};
     linmath::mat4x4 m_view{};
-    linmath::mat4x4 m_se3;
-    linmath::mat4x4 m_se3_2;
+    linmath::mat4x4 m_se3_depth;
+    linmath::mat4x4 m_se3_color;
 
     OpenGL::Framebuffer m_frameBuffer = OpenGL::Framebuffer(true);
     OpenGL::Renderbuffer m_depthBuffer = OpenGL::Renderbuffer(true);

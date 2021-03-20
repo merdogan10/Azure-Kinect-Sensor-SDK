@@ -137,10 +137,10 @@ K4APointCloudWindow::K4APointCloudWindow(std::string &&windowTitle,
                                          const k4a::calibration &calibrationData,
                                          std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource2,
                                          const k4a::calibration &calibrationData2,
-                                         linmath::mat4x4 se3,
-                                         linmath::mat4x4 se3_2) :
+                                         linmath::mat4x4 se3_depth,
+                                         linmath::mat4x4 se3_color) :
     m_title(std::move(windowTitle)),
-    m_pointCloudVisualizer(enableColorPointCloud, calibrationData, calibrationData2, se3, se3_2),
+    m_pointCloudVisualizer(enableColorPointCloud, calibrationData, calibrationData2, se3_depth, se3_color),
     m_captureSource(std::move(captureSource)),
     m_captureSource2(std::move(captureSource2)),
     m_pointSize(DefaultPointSize),

@@ -32,8 +32,8 @@ public:
                         const k4a::calibration &calibrationData,
                         std::shared_ptr<K4ANonBufferingCaptureSource> &&captureSource2,
                         const k4a::calibration &calibrationData2,
-                        linmath::mat4x4 se3,
-                        linmath::mat4x4 se3_2);
+                        linmath::mat4x4 se3_depth,
+                        linmath::mat4x4 se3_color);
     ~K4APointCloudWindow() override = default;
 
     K4APointCloudWindow(const K4APointCloudWindow &) = delete;

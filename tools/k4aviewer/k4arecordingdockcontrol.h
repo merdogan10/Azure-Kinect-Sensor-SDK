@@ -31,8 +31,8 @@ public:
     explicit K4ARecordingDockControl(std::string &path,
                                      k4a::playback &&recording,
                                      k4a::playback &&recording2,
-                                     linmath::mat4x4 se3,
-                                     linmath::mat4x4 se3_2);
+                                     linmath::mat4x4 se3_depth,
+                                     linmath::mat4x4 se3_color);
 
     K4ADockControlStatus Show() override;
 
@@ -106,8 +106,8 @@ private:
     std::unique_ptr<K4APollingThread> m_playbackThread;
     std::unique_ptr<K4APollingThread> m_playbackThread2;
 
-    linmath::mat4x4 m_se3;
-    linmath::mat4x4 m_se3_2;
+    linmath::mat4x4 m_se3_depth;
+    linmath::mat4x4 m_se3_color;
 };
 
 } // namespace k4aviewer

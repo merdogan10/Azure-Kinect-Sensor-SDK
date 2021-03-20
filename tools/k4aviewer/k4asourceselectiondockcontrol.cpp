@@ -167,41 +167,46 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
         k4a::playback recording2 = k4a::playback::open(input_video_path2.c_str());
 
         linmath::mat4x4 se3, se3_2;
-        linmath::mat4x4 c2c, c2c_id;
+        linmath::mat4x4 c2c_depth, c2c_color;
         
         CalibrationType calibration_type = CalibrationType::Charuco;
 
         Calibration calib(input_video_path, world2camera_file, icp_file, calibration_type);
         Calibration calib2(input_video_path2, world2camera_file2, icp_file2, calibration_type);
         
-        // When camera2camera is used, use identity matrix for the other view
-        linmath::mat4x4_identity(c2c_id);
         switch (calibration_type)
         {
         case k4aviewer::CalibrationType::Quaternion:
         case k4aviewer::CalibrationType::ICP:
             // se3' * se3_2
-            calib.get_se3_inverse(se3);
-            calib2.get_se3(se3_2);
-            linmath::mat4x4_mul(c2c, se3, se3_2);
+            calib.get_se3_color_inverse(se3);
+            calib2.get_se3_color(se3_2);
+            linmath::mat4x4_mul(c2c_color, se3, se3_2);
+            calib.get_se3_depth_inverse(se3);
+            calib2.get_se3_depth(se3_2);
+            linmath::mat4x4_mul(c2c_depth, se3, se3_2);
             break;
 
         case k4aviewer::CalibrationType::Charuco:
             // se3 * se3_2'
-            calib.get_se3(se3);
-            calib2.get_se3_inverse(se3_2);
-            linmath::mat4x4_mul(c2c, se3, se3_2);
+            calib.get_se3_color(se3);
+            calib2.get_se3_color_inverse(se3_2);
+            linmath::mat4x4_mul(c2c_color, se3, se3_2);
+            calib.get_se3_depth(se3);
+            calib2.get_se3_depth_inverse(se3_2);
+            linmath::mat4x4_mul(c2c_depth, se3, se3_2);
             break;
         }
         
         string test_video_path = captures_folder + "charuco_move\\cn03\\k4a_record.mkv";
         string test_video_path2 = captures_folder + "charuco_move\\cn06\\k4a_record.mkv";
-        Projection proj(input_video_path, input_video_path2, c2c);
+        Projection proj(input_video_path, input_video_path2, c2c_color);
 
         // Move c2c into OpenGL perspective
-        move_into_GL(c2c, c2c);
+        move_into_GL(c2c_color, c2c_color);
+        move_into_GL(c2c_depth, c2c_depth);
         K4AWindowManager::Instance().PushLeftDockControl(std14::make_unique<K4ARecordingDockControl>(
-            input_video_path, std::move(recording), std::move(recording2), c2c_id, c2c));
+            input_video_path, std::move(recording), std::move(recording2), c2c_depth, c2c_color));
     }
     catch (const k4a::error &e)
     {

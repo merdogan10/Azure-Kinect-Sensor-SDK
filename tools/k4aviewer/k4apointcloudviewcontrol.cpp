@@ -30,14 +30,14 @@ inline float Radians(const float angle)
 //
 constexpr float MinZoom = 1.0f;
 constexpr float MaxZoom = 120.0f;
-constexpr float DefaultZoom = 65.0f;
+constexpr float DefaultZoom = 15.0f; // original: 65.0f
 constexpr float ZoomSensitivity = 3.f;
 constexpr float TranslationSensitivity = 0.01f;
 
 // Default point cloud position, chosen such that the entire point cloud
 // should be in the field of view
 //
-const vec3 DefaultPointCloudPosition{ 0.f, 0.f, -8.0f };
+const vec3 DefaultPointCloudPosition{ 0.f, -0.9f, -8.0f }; // original: { 0.f, 0.f, -8.0f }
 
 // Approximate midpoint of a point cloud.  We need to translate
 // the point cloud by this much before we start applying rotations to the

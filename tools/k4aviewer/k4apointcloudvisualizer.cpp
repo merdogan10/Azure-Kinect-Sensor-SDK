@@ -74,10 +74,7 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
     m_viewControl.GetPerspectiveMatrix(m_projection, displayDimensions);
     m_viewControl.GetViewMatrix(m_view);
 
-    linmath::mat4x4 view_to_show;
-    linmath::mat4x4_mul(view_to_show, m_view, m_se3);
-
-    m_pointCloudRenderer.UpdateViewProjection(view_to_show, m_projection);
+    m_pointCloudRenderer.UpdateViewProjection(m_view, m_projection);
 
     // Update the point cloud renderer with the latest point data
     //
@@ -98,7 +95,10 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
     GLenum renderStatus = m_pointCloudRenderer.Render();
 
     linmath::mat4x4 view_to_show2;
-    linmath::mat4x4_mul(view_to_show2, m_view, m_se3_2);
+    if (m_colorizationStrategy == ColorizationStrategy::Color)
+        linmath::mat4x4_mul(view_to_show2, m_view, m_se3_color);
+    else
+        linmath::mat4x4_mul(view_to_show2, m_view, m_se3_depth);
 
     //linmath::mat4x4_translate_in_place(view_to_show2, (float)-1.05, (float)0.05, 0); //shader fit
     //linmath::mat4x4_translate_in_place(view_to_show2, (float)-1.08, 0, 0); // color fit
@@ -255,15 +255,15 @@ void K4APointCloudVisualizer::SetPointSize(int size)
 K4APointCloudVisualizer::K4APointCloudVisualizer(const bool enableColorPointCloud,
                                                  const k4a::calibration &calibrationData,
                                                  const k4a::calibration &calibrationData2,
-                                                 linmath::mat4x4 se3,
-                                                 linmath::mat4x4 se3_2) :
+                                                 linmath::mat4x4 se3_depth,
+                                                 linmath::mat4x4 se3_color) :
     m_dimensions(PointCloudVisualizerTextureDimensions),
     m_enableColorPointCloud(enableColorPointCloud),
     m_calibrationData(calibrationData),
     m_calibrationData2(calibrationData2)
 {
-    linmath::mat4x4_dup(m_se3, se3);
-    linmath::mat4x4_dup(m_se3_2, se3_2);
+    linmath::mat4x4_dup(m_se3_depth, se3_depth);
+    linmath::mat4x4_dup(m_se3_color, se3_color);
     m_expectedValueRange = GetDepthModeRange(m_calibrationData.depth_mode);
     m_transformation = k4a::transformation(m_calibrationData);
     m_transformation2 = k4a::transformation(m_calibrationData2);
@@ -346,7 +346,6 @@ K4APointCloudVisualizer::UpdatePointClouds(const k4a::capture &capture,
     }
     else if (m_colorizationStrategy == ColorizationStrategy::Simple)
     {
-        DepthPixel *srcPixel = reinterpret_cast<DepthPixel *>(depthImage.get_buffer());
         BgraPixel *dstPixel = reinterpret_cast<BgraPixel *>(pointCloudColorization.get_buffer());
         const BgraPixel *endPixel = dstPixel + (depthImage.get_size() / sizeof(DepthPixel));
 
@@ -361,7 +360,6 @@ K4APointCloudVisualizer::UpdatePointClouds(const k4a::capture &capture,
             *dstPixel = result;
 
             ++dstPixel;
-            ++srcPixel;
         }
     }
     else

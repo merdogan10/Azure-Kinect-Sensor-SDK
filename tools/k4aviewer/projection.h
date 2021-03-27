@@ -21,20 +21,18 @@ namespace k4aviewer
 /**
  * \brief show image with given name
  */
-void show_image(string window_name, Mat image, int x_pos = 0)
+void show_image(string window_name, Mat image, int x_pos = 0, int y_pos = 0)
 {
+    namedWindow(window_name, WINDOW_NORMAL);
     if (image.rows > 1000)
     {
-        namedWindow(window_name, WINDOW_NORMAL);
         resizeWindow(window_name, 1400, 1050);
-        moveWindow(window_name, x_pos, 0);
     }
-    else if (image.rows < 300)
+    else
     {
-        namedWindow(window_name, WINDOW_NORMAL);
-        resizeWindow(window_name, 300, 300);
-        moveWindow(window_name, x_pos, 0);
+        resizeWindow(window_name, 400, 400);
     }
+    moveWindow(window_name, x_pos, y_pos);
     imshow(window_name, image);
     (char)waitKey(30);
 }
@@ -94,59 +92,66 @@ public:
             calculate_charuco_board_corners(m_charuco_1, m_board_corners_1, m_board_corners_3d_1, m_calculated_ids_1);
             calculate_charuco_board_corners(m_charuco_2, m_board_corners_2, m_board_corners_3d_2, m_calculated_ids_2);
 
-            Mat overlay_image;
+            Mat overlay_image, for_overlay_1, for_overlay_2;
             double alpha = 0.8;
             double beta_value;
             beta_value = (1.0 - alpha);
-            int block_size = 10, offset = 80;
+            int block_size = 10, offset = 70;
             int block_width, block_height;
-
-            ProjectionMode mode = ProjectionMode::Find_plane;
+            Mat disp;
+            Point match_loc;
+            
+            ProjectionMode mode = ProjectionMode::Outer_3D_raycast_homography;
             switch (mode)
             {
             case k4aviewer::ProjectionMode::Find_plane:
+
                 find_plane(video_2.m_calibration, video_2.m_depthMat, m_planes_2, m_planes_3d_2, block_size);
                 for (int j = 0; j < m_planes_3d_2.size(); j++)
                 {
                     color_corners_of_depth_planes(video_2.m_calibration, m_planes_3d_2[j], m_temp_corners_2);
-                    project_planes(video_1.m_calibration, video_2.m_calibration, m_planes_3d_2[j], m_temp_corners_1);
+                    if (!project_planes(video_1.m_calibration,
+                                        video_1.m_depth_image,
+                                        video_1.m_depthMat,
+                                        video_2.m_calibration,
+                                        m_planes_3d_2[j],
+                                        m_temp_corners_1))
+                        continue;
 
-                    sanity_check(m_temp_corners_1,
-                                 video_1.m_calibration,
-                                 video_1.m_depth_image,
-                                 video_1.m_depthMat,
-                                 m_temp_corners_2,
-                                 video_2.m_calibration,
-                                 video_2.m_depth_image,
-                                 video_2.m_depthMat,
-                                 block_width,
-                                 block_height);
-                    
-                    // width-height is block size but in color image not depth image
-                    homography(m_temp_corners_2, video_2.m_colorMat, m_warpMat_2, block_width, block_height);
-                    homography(m_temp_corners_1, video_1.m_colorMat, m_warpMat_1, block_width, block_height, offset);
-                    template_matching(m_warpMat_1, m_warpMat_2);
+                    if (!sanity_check(m_temp_corners_1,
+                                      video_1.m_calibration,
+                                      m_temp_corners_2,
+                                      video_2.m_calibration,
+                                      block_width,
+                                      block_height))
+                        continue;
 
-                    rectangle(m_warpMat_1,
-                              Point(offset, offset),
-                              Point(offset + block_width, offset + block_height),
-                              Scalar(0, 0, 255),
-                              1,
-                              8,
-                              0);
-                    show_image("search image (projected)", m_warpMat_1, 1200);
-                    show_image("template", m_warpMat_2, 350);
-                    
-                    Mat disp;
-                    homography(m_temp_corners_2, video_2.m_colorMat, disp, block_width, block_height, offset);
-                    rectangle(disp,
-                              Point(offset, offset),
-                              Point(offset + block_width, offset + block_height),
-                              Scalar(0, 0, 255),
-                              1,
-                              8,
-                              0);
-                    show_image("block original place", disp, 0);
+                    match_loc = template_matching_pipeline(m_temp_corners_1, m_temp_corners_2, block_width, block_height, offset);
+
+                    create_hom_corners(m_hom_corners_2,
+                                       (float)block_width,
+                                       (float)block_height,
+                                       (float)offset,
+                                       (float)offset);
+                    create_hom_corners(m_hom_corners_1,
+                                       (float)block_width,
+                                       (float)block_height,
+                                       (float)match_loc.x,
+                                       (float)match_loc.y);
+
+                    while (m_calculated_ids_1.size() > 4)
+                    {
+                        m_calculated_ids_1.pop_back();
+                        m_calculated_ids_2.pop_back();
+                    }
+                    // 2d error in pixels
+                    pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
+                                                                  m_calculated_ids_1,
+                                                                  m_hom_corners_2,
+                                                                  m_calculated_ids_2,
+                                                                  m_warpMat_1);
+
+                    show_image("error", m_warpMat_1, 810, 440);
 
                     /*
                     Mat disp1, disp2;
@@ -176,14 +181,35 @@ public:
                         video_2.m_depthMat,
                         m_board_corners_2,
                         m_raycast_corners_2);
+
                 // extract board by homography
-                homography(m_raycast_corners_1, video_1.m_colorMat, m_warpMat_1);
-                homography(m_raycast_corners_2, video_2.m_colorMat, m_warpMat_2);
+                homography(m_raycast_corners_1, video_1.m_colorMat, for_overlay_1);
+                homography(m_raycast_corners_2, video_2.m_colorMat, for_overlay_2);
                 // overlay
-                addWeighted(m_warpMat_1, alpha, m_warpMat_2, beta_value, 0.0, overlay_image);
-                show_image("1", m_warpMat_1);
-                show_image("2", m_warpMat_2);
-                show_image("overlay", overlay_image);
+                addWeighted(for_overlay_1, alpha, for_overlay_2, beta_value, 0.0, overlay_image);
+                show_image("overlay", overlay_image, 405, 440);
+
+                block_width = 640;
+                block_height = 480;
+                offset = 200;
+                match_loc = template_matching_pipeline(m_raycast_corners_1, m_raycast_corners_2, block_width, block_height, 200);
+
+                create_hom_corners(m_hom_corners_2, (float)block_width, (float)block_height, (float)offset, (float)offset);
+                create_hom_corners(m_hom_corners_1, (float)block_width, (float)block_height, (float)match_loc.x, (float)match_loc.y);
+
+                while (m_calculated_ids_1.size() > 4)
+                {
+                    m_calculated_ids_1.pop_back();
+                    m_calculated_ids_2.pop_back();
+                }
+                // 2d error in pixels
+                pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
+                                                              m_calculated_ids_1,
+                                                              m_hom_corners_2,
+                                                              m_calculated_ids_2,
+                                                              m_warpMat_1);
+
+                show_image("error", m_warpMat_1, 810, 440);
                 break;
 
             case k4aviewer::ProjectionMode::Outer_3D_homography:
@@ -192,14 +218,47 @@ public:
                                  m_board_corners_3d_2,
                                  m_projected_board_corners_3d,
                                  m_projected_board_corners_from_3d);
+
                 // extract board by homography
-                homography(m_projected_board_corners_from_3d, video_1.m_colorMat, m_warpMat_1);
-                homography(m_board_corners_2, video_2.m_colorMat, m_warpMat_2);
+                homography(m_projected_board_corners_from_3d, video_1.m_colorMat, for_overlay_1);
+                homography(m_board_corners_2, video_2.m_colorMat, for_overlay_2);
                 // overlay
-                addWeighted(m_warpMat_1, alpha, m_warpMat_2, beta_value, 0.0, overlay_image);
-                show_image("1", m_warpMat_1);
-                show_image("2", m_warpMat_2);
-                show_image("overlay", overlay_image);
+                addWeighted(for_overlay_1, alpha, for_overlay_2, beta_value, 0.0, overlay_image);
+                show_image("overlay", overlay_image, 405, 440);
+
+                block_width = 640;
+                block_height = 480;
+                offset = 200;
+                match_loc = template_matching_pipeline(m_projected_board_corners_from_3d,
+                                                       m_board_corners_2,
+                                                       block_width,
+                                                       block_height,
+                                                       200);
+
+                create_hom_corners(m_hom_corners_2,
+                                   (float)block_width,
+                                   (float)block_height,
+                                   (float)offset,
+                                   (float)offset);
+                create_hom_corners(m_hom_corners_1,
+                                   (float)block_width,
+                                   (float)block_height,
+                                   (float)match_loc.x,
+                                   (float)match_loc.y);
+
+                while (m_calculated_ids_1.size() > 4)
+                {
+                    m_calculated_ids_1.pop_back();
+                    m_calculated_ids_2.pop_back();
+                }
+                // 2d error in pixels
+                pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
+                                                              m_calculated_ids_1,
+                                                              m_hom_corners_2,
+                                                              m_calculated_ids_2,
+                                                              m_warpMat_1);
+
+                show_image("error", m_warpMat_1, 810, 440);
                 break;
 
             case k4aviewer::ProjectionMode::Inner_3D:
@@ -217,7 +276,8 @@ public:
                 pixel_error += pixel_error_by_frame_per_point(m_calculated_corners_1,
                                                               m_calculated_ids_1,
                                                               m_projected_corners_from_3d,
-                                                              m_calculated_ids_2);
+                                                              m_calculated_ids_2,
+                                                              video_1.m_colorMat);
                 draw(m_calculated_corners_1, m_calculated_ids_1, m_projected_corners_from_3d, m_calculated_ids_2);
                 break;
 
@@ -233,7 +293,8 @@ public:
                 pixel_error += pixel_error_by_frame_per_point(m_calculated_corners_1,
                                                               m_calculated_ids_1,
                                                               m_projected_corners,
-                                                              m_calculated_ids_2);
+                                                              m_calculated_ids_2,
+                                                              video_1.m_colorMat);
                 draw(m_calculated_corners_1, m_calculated_ids_1, m_projected_corners, m_calculated_ids_2);
                 break;
 
@@ -249,7 +310,8 @@ public:
                 pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_detected_corners,
                                                               m_charuco_1.m_detected_ids,
                                                               m_projected_corners,
-                                                              m_charuco_2.m_detected_ids);
+                                                              m_charuco_2.m_detected_ids,
+                                                              video_1.m_colorMat);
                 draw(m_charuco_1.m_detected_corners,
                      m_charuco_1.m_detected_ids,
                      m_projected_corners,
@@ -270,6 +332,58 @@ public:
         average_distance_error; 
         video_1.close_playback();
         video_2.close_playback();
+    }
+
+    void create_hom_corners(vector<Point2f> &hom_corners, float width, float height, float offset_x, float offset_y)
+    {
+        hom_corners.clear();
+        hom_corners.push_back(Point2f(width + offset_x, height + offset_y));
+        hom_corners.push_back(Point2f(width + offset_x, 0 + offset_y));
+        hom_corners.push_back(Point2f(0 + offset_x, 0 + offset_y));
+        hom_corners.push_back(Point2f(0 + offset_x, height + offset_y));
+    }
+
+    Point template_matching_pipeline(vector<Point2f> &full_image_corners, vector<Point2f> &template_corners, int block_width, int block_height, int offset) {
+        homography(template_corners, video_2.m_colorMat, m_warpMat_2, block_width, block_height);
+        homography(full_image_corners, video_1.m_colorMat, m_warpMat_1, block_width, block_height, offset);
+
+        Mat img_match;
+        m_warpMat_1.copyTo(img_match);
+        Point match_loc;
+        match_loc = template_matching(m_warpMat_1, m_warpMat_2);
+
+        rectangle(img_match,
+                  match_loc,
+                  Point(match_loc.x + block_width, match_loc.y + block_height),
+                  Scalar(0, 0, 255),
+                  3,
+                  8,
+                  0);
+        show_image("Template matching", img_match, 405);
+
+        Mat img_search;
+        m_warpMat_1.copyTo(img_search);
+        rectangle(img_search,
+                  Point(offset, offset),
+                  Point(offset + block_width, offset + block_height),
+                  Scalar(0, 0, 255),
+                  3,
+                  8,
+                  0);
+        show_image("search image (projected)", img_search, 810);
+        show_image("template", m_warpMat_2, 0, 440);
+
+        Mat disp;
+        homography(template_corners, video_2.m_colorMat, disp, block_width, block_height, offset);
+        rectangle(disp,
+                  Point(offset, offset),
+                  Point(offset + block_width, offset + block_height),
+                  Scalar(0, 0, 255),
+                  3,
+                  8,
+                  0);
+        show_image("block original place", disp, 0);
+        return match_loc;
     }
 
     bool limit_check(vector<Point2f> &corners, int width_limit, int height_limit) {
@@ -303,12 +417,8 @@ public:
 
     bool sanity_check(vector<Point2f> &corners_1,
                       k4a_calibration_t &calibration_1,
-                      k4a_image_t &depth_image_1,
-                      Mat &depthMat_1,
                       vector<Point2f> &corners_2,
                       k4a_calibration_t &calibration_2,
-                      k4a_image_t &depth_image_2,
-                      Mat &depthMat_2,
                       int &block_width,
                       int &block_height)
     {
@@ -327,33 +437,11 @@ public:
                  block_width,
                  block_height); 
 
-        float depth_1, depth_2;
-        for (int i = 0; i < corners_1.size(); i++)
-        {
-            k4a_float2_t point_2d;
-
-            point_2d.xy.x = static_cast<float>(corners_1[i].x);
-            point_2d.xy.y = static_cast<float>(corners_1[i].y);
-
-            depth_1 = get_depth_of_color_pixel(calibration_1, depth_image_1, depthMat_1, point_2d);
-        }
-
-        for (int i = 0; i < corners_2.size(); i++)
-        {
-            k4a_float2_t point_2d;
-
-            point_2d.xy.x = static_cast<float>(corners_2[i].x);
-            point_2d.xy.y = static_cast<float>(corners_2[i].y);
-
-            depth_2 = get_depth_of_color_pixel(calibration_2, depth_image_2, depthMat_2, point_2d);
-        }
         return true;
     }
 
-    void template_matching(Mat &full_image, Mat &temp) {
-        Mat img_display;
-        full_image.copyTo(img_display);
-
+    Point2f template_matching(Mat &full_image, Mat &temp)
+    {
         Mat result;
         int result_cols = full_image.cols - temp.cols + 1;
         int result_rows = full_image.rows - temp.rows + 1;
@@ -365,20 +453,16 @@ public:
 
         double minVal;
         double maxVal;
-        Point minLoc;
-        Point maxLoc;
-        Point matchLoc;
-        minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
+        Point min_loc;
+        Point max_loc;
+        Point match_loc;
+        minMaxLoc(result, &minVal, &maxVal, &min_loc, &max_loc, Mat());
         if (match_method == TM_SQDIFF || match_method == TM_SQDIFF_NORMED)
-            matchLoc = minLoc;
+            match_loc = min_loc;
         else
-            matchLoc = maxLoc;
+            match_loc = max_loc;
 
-        rectangle(
-            img_display, matchLoc, Point(matchLoc.x + temp.cols, matchLoc.y + temp.rows), Scalar(0, 0, 255), 1, 8, 0);
-        //rectangle(result, matchLoc, Point(matchLoc.x + temp.cols, matchLoc.y + temp.rows), Scalar::all(0), 2, 8, 0);
-        show_image("Template matching", img_display, 800);
-        //show_image("Result window", result, 1200);
+        return match_loc;
     }
     bool plane_equation(Point3f p1, Point3f p2, Point3f p3, Point3f p)
     {
@@ -573,6 +657,8 @@ public:
         k4a_calibration_color_2d_to_depth_2d(&calibration, &point_2d, depth_image, &point_2d_depth, &valid);
         int idx_col = (int)round(point_2d_depth.xy.x);
         int idx_row = (int)round(point_2d_depth.xy.y);
+        if (!valid)
+            return 0;
         return depthMat.at<uint16_t>(idx_row, idx_col);
     }
 
@@ -685,7 +771,9 @@ public:
             new_corners.push_back(Point2f(point_2d_projected.xy.x, point_2d_projected.xy.y));
         }
     }
-    void project_planes(k4a_calibration_t &calibration_1,
+    bool project_planes(k4a_calibration_t &calibration_1,
+                        k4a_image_t &depth_image,
+                        Mat &depthMat,
                         k4a_calibration_t &calibration_2,
                         vector<Point3f> &old_corners_3d,
                         vector<Point2f> &new_corners)
@@ -694,7 +782,7 @@ public:
         for (int i = 0; i < old_corners_3d.size(); i++)
         {
             k4a_float2_t point_2d_projected;
-            k4a_float3_t point_3d, point_3d_projected, point_3d_color;
+            k4a_float3_t point_3d, point_3d_projected, point_3d_color, point_3d_reprojected;
             int valid;
 
             point_3d.xyz.x = static_cast<float>(old_corners_3d[i].x);
@@ -725,8 +813,27 @@ public:
                                      &point_2d_projected,
                                      &valid);
 
+            // occlusion check
+            float point_2d_depth_value =
+                get_depth_of_color_pixel(calibration_1, depth_image, depthMat, point_2d_projected);
+
+            // Project 2d point to 3d point
+            k4a_calibration_2d_to_3d(&calibration_1,
+                                     &point_2d_projected,
+                                     point_2d_depth_value,
+                                     K4A_CALIBRATION_TYPE_COLOR,
+                                     K4A_CALIBRATION_TYPE_COLOR,
+                                     &point_3d_reprojected,
+                                     &valid);
+
+            Point3f projected_3d(point_3d_projected.xyz.x, point_3d_projected.xyz.y, point_3d_projected.xyz.z);
+            Point3f reprojected_3d(point_3d_reprojected.xyz.x, point_3d_reprojected.xyz.y, point_3d_reprojected.xyz.z);
+            double distance = norm(projected_3d-reprojected_3d);
+            if (distance > 50)
+                return false;
             new_corners.push_back(Point2f(point_2d_projected.xy.x, point_2d_projected.xy.y));
         }
+        return true;
     }
 
     void project_2d_to_2d(k4a_calibration_t &calibration_1,
@@ -895,15 +1002,17 @@ public:
                                              vector<Point3f> corners_3d_2,
                                              vector<int> ids_2)
     {
+        Mat empty;
         return error_by_frame_per_point(
-            vector<Point2f>(), corners_3d_1, ids_1, vector<Point2f>(), corners_3d_2, ids_2, true);
+            vector<Point2f>(), corners_3d_1, ids_1, vector<Point2f>(), corners_3d_2, ids_2, true, empty);
     }
     double pixel_error_by_frame_per_point(vector<Point2f> corners_1,
                                           vector<int> ids_1,
                                           vector<Point2f> corners_2,
-                                          vector<int> ids_2)
+                                          vector<int> ids_2,
+                                          Mat &image)
     {
-        return error_by_frame_per_point(corners_1, vector<Point3f>(), ids_1, corners_2, vector<Point3f>(), ids_2);
+        return error_by_frame_per_point(corners_1, vector<Point3f>(), ids_1, corners_2, vector<Point3f>(), ids_2, false, image);
     }
 
     double error_by_frame_per_point(vector<Point2f> corners_1,
@@ -912,7 +1021,8 @@ public:
                                     vector<Point2f> corners_2,
                                     vector<Point3f> corners_3d_2,
                                     vector<int> ids_2,
-                                    bool error_in_3d = false)
+                                    bool error_in_3d,
+                                    Mat &image)
     {
         int idx_1 = 0, idx_2 = 0;
         double frame_error = 0;
@@ -925,7 +1035,7 @@ public:
                 if (!error_in_3d)
                 {
                     e = norm(corners_1[idx_1] - corners_2[idx_2]);
-                    arrowedLine(video_1.m_colorMat, corners_1[idx_1], corners_2[idx_2], Scalar(255, 0, 255), 2, LINE_AA, 0, 0.3);
+                    arrowedLine(image, corners_1[idx_1], corners_2[idx_2], Scalar(255, 0, 255), 2, LINE_AA, 0, 0.3);
                 }
                 else
                     e = norm(corners_3d_1[idx_1] - corners_3d_2[idx_2]) * 1000.0; // error in mm
@@ -955,6 +1065,7 @@ public:
     vector<Point3f> m_temp_corners_3d_1, m_temp_corners_3d_2;
     vector<vector<Point2f>> m_planes_2;
     vector<vector<Point3f>> m_planes_3d_2;
+    vector<Point2f> m_hom_corners_1, m_hom_corners_2;
 
     linmath::mat4x4 m_c2c, m_c2c_mm;
     Charuco m_charuco_1, m_charuco_2;

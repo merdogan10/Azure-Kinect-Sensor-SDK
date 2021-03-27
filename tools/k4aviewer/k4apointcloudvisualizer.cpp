@@ -100,9 +100,6 @@ PointCloudVisualizationResult K4APointCloudVisualizer::UpdateTexture(std::shared
     else
         linmath::mat4x4_mul(view_to_show2, m_view, m_se3_depth);
 
-    //linmath::mat4x4_translate_in_place(view_to_show2, (float)-1.05, (float)0.05, 0); //shader fit
-    //linmath::mat4x4_translate_in_place(view_to_show2, (float)-1.08, 0, 0); // color fit
-
     m_pointCloudRenderer2.UpdateViewProjection(view_to_show2, m_projection);
 
     PointCloudVisualizationResult result2 = UpdatePointClouds(capture2,

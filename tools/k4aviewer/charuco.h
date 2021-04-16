@@ -60,10 +60,17 @@ public:
         detect_charuco_pose(
             image, m_board, m_params, m_cameraMatrix, m_distCoeffs, m_detected_corners, m_detected_ids, m_rvec, m_tvec);
     }
+
+    void calculate_corners()
+    {
+        calculate_charuco_corners(m_calculated_corners, m_calculated_corners_3d, m_calculated_ids, false);
+        calculate_charuco_corners(m_outer_corners, m_outer_corners_3d, m_outer_ids, true);
+    }
     
     Vec3d m_rvec, m_tvec;
-    vector<Point2f> m_detected_corners;
-    vector<int> m_detected_ids;
+    vector<Point2f> m_detected_corners, m_calculated_corners, m_outer_corners;
+    vector<Point3f> m_calculated_corners_3d, m_outer_corners_3d;
+    vector<int> m_detected_ids, m_calculated_ids, m_outer_ids;
     Mat m_cameraMatrix, m_distCoeffs;
     linmath::mat4x4 m_extrinsics;
 
@@ -127,6 +134,68 @@ private:
                     detected_corners, detected_ids, board, cameraMatrix, distCoeffs, rvec, tvec);
             }
         }
+    }
+
+    /**
+     * \brief calculate corner points by getting Horizontal and Vertical chess square vectors
+     */
+    vector<Point3f> get_corners_in_camera_world(double side, Vec3d rvec, Vec3d tvec, bool board_corners = false)
+    {
+        // compute rot_mat
+        Mat rot_mat;
+        Rodrigues(rvec, rot_mat);
+
+        // transpose of rot_mat for easy columns extraction
+        Mat rot_mat_t = rot_mat.t();
+
+        // the two E-O and F-O vectors
+        double *tmp = rot_mat_t.ptr<double>(0);
+        Point3f cam_world_E((float)(tmp[0] * side), (float)(tmp[1] * side), (float)(tmp[2] * side));
+
+        tmp = rot_mat_t.ptr<double>(1);
+        Point3f cam_world_F((float)(tmp[0] * side), (float)(tmp[1] * side), (float)(tmp[2] * side));
+
+        // convert tvec to point
+        Point3f tvec_3f((float)tvec[0], (float)tvec[1], (float)tvec[2]);
+        vector<Point3f> result;
+        if (board_corners)
+        {
+            // 4 corners of the board
+            vector<Point3f> ret(4, tvec_3f);
+            ret[1] += 4 * cam_world_E;
+            ret[2] += 4 * cam_world_E + 3 * cam_world_F;
+            ret[3] += 3 * cam_world_F;
+            return ret;
+        }
+        else
+        {
+            // 6 inner corners of charuco
+            vector<Point3f> ret(6, tvec_3f);
+            ret[0] += cam_world_E + cam_world_F;
+            ret[1] += 2 * cam_world_E + cam_world_F;
+            ret[2] += 3 * cam_world_E + cam_world_F;
+            ret[3] += cam_world_E + 2 * cam_world_F;
+            ret[4] += 2 * cam_world_E + 2 * cam_world_F;
+            ret[5] += 3 * cam_world_E + 2 * cam_world_F;
+            return ret;
+        }
+    }
+
+    /**
+    * \brief calculate 3d and 2d corners by the 3d detected pose
+    */
+    void calculate_charuco_corners(vector<Point2f> &corners,
+                                   vector<Point3f> &corners_3d,
+                                   vector<int> &ids,
+                                   bool is_board_corners = false)
+    {
+        corners_3d = get_corners_in_camera_world(0.053, m_rvec, m_tvec, is_board_corners);
+        vector<Point3f> converted;
+        converted = prepare_for_2d_reprojection(m_rvec, corners_3d);
+        projectPoints(converted, m_rvec, m_tvec, m_cameraMatrix, m_distCoeffs, corners);
+
+        ids.resize(corners_3d.size());
+        generate(ids.begin(), ids.end(), [n = 0]() mutable { return n++; });
     }
 
     Ptr<aruco::Dictionary> m_dictionary;

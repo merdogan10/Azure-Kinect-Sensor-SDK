@@ -78,19 +78,8 @@ public:
 
             m_charuco_1.detect_charuco_pose(video_1.m_colorMat);
             m_charuco_2.detect_charuco_pose(video_2.m_colorMat);
-
-            // charuco inner corners
-            calculate_charuco_corners(m_charuco_1,
-                                      m_calculated_corners_1,
-                                      m_calculated_corners_3d_1,
-                                      m_calculated_ids_1);
-            calculate_charuco_corners(m_charuco_2,
-                                      m_calculated_corners_2,
-                                      m_calculated_corners_3d_2,
-                                      m_calculated_ids_2);
-            // board corners
-            calculate_charuco_board_corners(m_charuco_1, m_board_corners_1, m_board_corners_3d_1, m_calculated_ids_1);
-            calculate_charuco_board_corners(m_charuco_2, m_board_corners_2, m_board_corners_3d_2, m_calculated_ids_2);
+            m_charuco_1.calculate_corners();
+            m_charuco_2.calculate_corners();
 
             Mat overlay_image, for_overlay_1, for_overlay_2;
             double alpha = 0.8;
@@ -139,36 +128,20 @@ public:
                                        (float)match_loc.x,
                                        (float)match_loc.y);
 
-                    while (m_calculated_ids_1.size() > 4)
-                    {
-                        m_calculated_ids_1.pop_back();
-                        m_calculated_ids_2.pop_back();
-                    }
                     // 2d error in pixels
                     pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                                  m_calculated_ids_1,
+                                                                  m_charuco_1.m_outer_ids,
                                                                   m_hom_corners_2,
-                                                                  m_calculated_ids_2,
+                                                                  m_charuco_2.m_outer_ids,
                                                                   m_warpMat_1);
 
                     show_image("error", m_warpMat_1, 810, 440);
-
-                    /*
-                    Mat disp1, disp2;
-                    video_1.m_colorMat.copyTo(disp1);
-                    video_2.m_colorMat.copyTo(disp2);
-
-                    rectangle(disp1, m_temp_corners_1[0], m_temp_corners_1[2], Scalar(0, 0, 255), 2, 8, 0);
-                    rectangle(disp2, m_temp_corners_2[0], m_temp_corners_2[2], Scalar(0, 0, 255), 2, 8, 0);
-
-                    show_image("1", disp1);
-                    show_image("2", disp2, 1000);*/
                 }
                 break;
             case k4aviewer::ProjectionMode::Outer_3D_raycast_homography:
                 // 3d projection of board corners
                 project_3d_to_3d(m_charuco_2,
-                                 m_board_corners_3d_2,
+                                 m_charuco_2.m_outer_corners_3d,
                                  m_projected_board_corners_3d,
                                  m_projected_board_corners_from_3d);
                 raycast(video_1.m_calibration,
@@ -179,7 +152,7 @@ public:
                 raycast(video_2.m_calibration,
                         video_2.m_depth_image,
                         video_2.m_depthMat,
-                        m_board_corners_2,
+                        m_charuco_2.m_outer_corners,
                         m_raycast_corners_2);
 
                 // extract board by homography
@@ -197,16 +170,11 @@ public:
                 create_hom_corners(m_hom_corners_2, (float)block_width, (float)block_height, (float)offset, (float)offset);
                 create_hom_corners(m_hom_corners_1, (float)block_width, (float)block_height, (float)match_loc.x, (float)match_loc.y);
 
-                while (m_calculated_ids_1.size() > 4)
-                {
-                    m_calculated_ids_1.pop_back();
-                    m_calculated_ids_2.pop_back();
-                }
                 // 2d error in pixels
                 pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                              m_calculated_ids_1,
+                                                              m_charuco_1.m_outer_ids,
                                                               m_hom_corners_2,
-                                                              m_calculated_ids_2,
+                                                              m_charuco_2.m_outer_ids,
                                                               m_warpMat_1);
 
                 show_image("error", m_warpMat_1, 810, 440);
@@ -215,13 +183,13 @@ public:
             case k4aviewer::ProjectionMode::Outer_3D_homography:
                 // 3d projection of board corners
                 project_3d_to_3d(m_charuco_2,
-                                 m_board_corners_3d_2,
+                                 m_charuco_2.m_outer_corners_3d,
                                  m_projected_board_corners_3d,
                                  m_projected_board_corners_from_3d);
 
                 // extract board by homography
                 homography(m_projected_board_corners_from_3d, video_1.m_colorMat, for_overlay_1);
-                homography(m_board_corners_2, video_2.m_colorMat, for_overlay_2);
+                homography(m_charuco_2.m_outer_corners, video_2.m_colorMat, for_overlay_2);
                 // overlay
                 addWeighted(for_overlay_1, alpha, for_overlay_2, beta_value, 0.0, overlay_image);
                 show_image("overlay", overlay_image, 405, 440);
@@ -230,7 +198,7 @@ public:
                 block_height = 480;
                 offset = 200;
                 match_loc = template_matching_pipeline(m_projected_board_corners_from_3d,
-                                                       m_board_corners_2,
+                                                       m_charuco_2.m_outer_corners,
                                                        block_width,
                                                        block_height,
                                                        200);
@@ -246,16 +214,11 @@ public:
                                    (float)match_loc.x,
                                    (float)match_loc.y);
 
-                while (m_calculated_ids_1.size() > 4)
-                {
-                    m_calculated_ids_1.pop_back();
-                    m_calculated_ids_2.pop_back();
-                }
                 // 2d error in pixels
                 pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                              m_calculated_ids_1,
+                                                              m_charuco_1.m_outer_ids,
                                                               m_hom_corners_2,
-                                                              m_calculated_ids_2,
+                                                              m_charuco_2.m_outer_ids,
                                                               m_warpMat_1);
 
                 show_image("error", m_warpMat_1, 810, 440);
@@ -264,21 +227,24 @@ public:
             case k4aviewer::ProjectionMode::Inner_3D:
                 // 3d projection of calculated corners
                 project_3d_to_3d(m_charuco_2,
-                                 m_calculated_corners_3d_2,
+                                 m_charuco_2.m_calculated_corners_3d,
                                  m_projected_corners_3d,
                                  m_projected_corners_from_3d);
                 // 3d error in mm
-                distance_error += distance_error_by_frame_per_point(m_calculated_corners_3d_1,
-                                                                    m_calculated_ids_1,
+                distance_error += distance_error_by_frame_per_point(m_charuco_1.m_calculated_corners_3d,
+                                                                    m_charuco_1.m_calculated_ids,
                                                                     m_projected_corners_3d,
-                                                                    m_calculated_ids_2);
+                                                                    m_charuco_2.m_calculated_ids);
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_calculated_corners_1,
-                                                              m_calculated_ids_1,
+                pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
+                                                              m_charuco_1.m_calculated_ids,
                                                               m_projected_corners_from_3d,
-                                                              m_calculated_ids_2,
+                                                              m_charuco_2.m_calculated_ids,
                                                               video_1.m_colorMat);
-                draw(m_calculated_corners_1, m_calculated_ids_1, m_projected_corners_from_3d, m_calculated_ids_2);
+                draw(m_charuco_1.m_calculated_corners,
+                     m_charuco_1.m_calculated_ids,
+                     m_projected_corners_from_3d,
+                     m_charuco_2.m_calculated_ids);
                 break;
 
             case k4aviewer::ProjectionMode::Inner_2D_calculated_corners:
@@ -287,15 +253,18 @@ public:
                                  video_2.m_calibration,
                                  video_2.m_depth_image,
                                  video_2.m_depthMat,
-                                 m_calculated_corners_2,
+                                 m_charuco_2.m_calculated_corners,
                                  m_projected_corners);
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_calculated_corners_1,
-                                                              m_calculated_ids_1,
+                pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
+                                                              m_charuco_1.m_calculated_ids,
                                                               m_projected_corners,
-                                                              m_calculated_ids_2,
+                                                              m_charuco_2.m_calculated_ids,
                                                               video_1.m_colorMat);
-                draw(m_calculated_corners_1, m_calculated_ids_1, m_projected_corners, m_calculated_ids_2);
+                draw(m_charuco_1.m_calculated_corners,
+                     m_charuco_1.m_calculated_ids,
+                     m_projected_corners,
+                     m_charuco_2.m_calculated_ids);
                 break;
 
             case k4aviewer::ProjectionMode::Inner_2D_detected_corners:
@@ -638,7 +607,7 @@ public:
 
         // projection to 2d pixel coordinates
         vector<Point3f> converted;
-        converted = convert_for_2d(charuco.m_rvec, new_corners_3d);
+        converted = prepare_for_2d_reprojection(charuco.m_rvec, new_corners_3d);
         projectPoints(converted,
                       charuco.m_rvec,
                       charuco.m_tvec,
@@ -886,97 +855,6 @@ public:
         }
     }
 
-    /**
-    * \brief calculate corner points by getting Horizontal and Vertical chess square vectors
-    */
-    vector<Point3f> get_corners_in_camera_world(double side, Vec3d rvec, Vec3d tvec, bool board_corners = false)
-    {
-        // compute rot_mat
-        Mat rot_mat;
-        Rodrigues(rvec, rot_mat);
-
-        // transpose of rot_mat for easy columns extraction
-        Mat rot_mat_t = rot_mat.t();
-
-        // the two E-O and F-O vectors
-        double *tmp = rot_mat_t.ptr<double>(0);
-        Point3f cam_world_E((float)(tmp[0] * side), (float)(tmp[1] * side), (float)(tmp[2] * side));
-
-        tmp = rot_mat_t.ptr<double>(1);
-        Point3f cam_world_F((float)(tmp[0] * side), (float)(tmp[1] * side), (float)(tmp[2] * side));
-
-        // convert tvec to point
-        Point3f tvec_3f((float)tvec[0], (float)tvec[1], (float)tvec[2]);
-        vector<Point3f> result;
-        if (board_corners)
-        {
-            // 4 corners of the board
-            vector<Point3f> ret(4, tvec_3f);
-            ret[1] += 4 * cam_world_E;
-            ret[2] += 4 * cam_world_E + 3 * cam_world_F;
-            ret[3] += 3 * cam_world_F;
-            return ret;
-        }
-        else
-        {
-            // 6 inner corners of charuco
-            vector<Point3f> ret(6, tvec_3f);
-            ret[0] += cam_world_E + cam_world_F;
-            ret[1] += 2 * cam_world_E + cam_world_F;
-            ret[2] += 3 * cam_world_E + cam_world_F;
-            ret[3] += cam_world_E + 2 * cam_world_F;
-            ret[4] += 2 * cam_world_E + 2 * cam_world_F;
-            ret[5] += 3 * cam_world_E + 2 * cam_world_F;
-            return ret;
-        }
-    }
-
-    vector<Point3f> convert_for_2d(Vec3d &rvec, vector<Point3f> original)
-    {
-        vector<Point3f> result; 
-        for (int i = 0; i < original.size(); i++)
-        {
-            Vec3d tvec(original[i].x, original[i].y, original[i].z);
-            Mat R;
-            Rodrigues(rvec, R);
-            R = R.t();
-            Mat new_tvec = -R * tvec;
-            double *tmp = new_tvec.ptr<double>(0);
-            result.push_back(Point3f((float)tmp[0] * 1000, (float)tmp[1] * 1000, (float)tmp[2] * 1000));
-        }
-        return result;
-    }
-
-    void calculate_charuco_board_corners(Charuco &charuco,
-                                         vector<Point2f> &calculated_corners,
-                                         vector<Point3f> &calculated_corners_3d,
-                                         vector<int> &calculated_ids)
-    {
-        calculate_charuco_corners(charuco, calculated_corners, calculated_corners_3d, calculated_ids, true);
-    }
-    void calculate_charuco_corners(Charuco &charuco,
-                                   vector<Point2f> &calculated_corners,
-                                   vector<Point3f> &calculated_corners_3d,
-                                   vector<int> &calculated_ids,
-                                   bool is_board_corners = false)
-    {
-        calculated_corners_3d = get_corners_in_camera_world(0.053, charuco.m_rvec, charuco.m_tvec, is_board_corners);
-        vector<Point3f> converted;
-        converted = convert_for_2d(charuco.m_rvec, calculated_corners_3d);
-        projectPoints(converted,
-                      charuco.m_rvec,
-                      charuco.m_tvec,
-                      charuco.m_cameraMatrix,
-                      charuco.m_distCoeffs,
-                      calculated_corners);
-        
-        if (!is_board_corners)
-        {
-            calculated_ids.resize(calculated_corners_3d.size());
-            generate(calculated_ids.begin(), calculated_ids.end(), [n = 0]() mutable { return n++; });
-        }
-    }
-
     void draw(vector<Point2f> &corners_1, vector<int> &ids_1, vector<Point2f> &corners_2, vector<int> &ids_2)
     {
         aruco::drawDetectedCornersCharuco(video_1.m_colorMat, corners_2, ids_2, Scalar(0, 0, 255)); // aligned corners
@@ -1052,12 +930,7 @@ public:
         return frame_error / number_of_corners;
     }
 
-    vector<Point2f> m_board_corners_1, m_board_corners_2;
     vector<Point2f> m_raycast_corners_1, m_raycast_corners_2;
-    vector<Point2f> m_calculated_corners_1, m_calculated_corners_2;
-    vector<Point3f> m_calculated_corners_3d_1, m_calculated_corners_3d_2;
-    vector<Point3f> m_board_corners_3d_1, m_board_corners_3d_2;
-    vector<int> m_calculated_ids_1, m_calculated_ids_2;
     vector<Point2f> m_projected_corners, m_projected_corners_from_3d, m_projected_board_corners_from_3d;
     vector<Point3f> m_projected_corners_3d, m_projected_board_corners_3d;
 

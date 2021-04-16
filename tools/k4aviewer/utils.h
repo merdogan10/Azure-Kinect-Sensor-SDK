@@ -21,6 +21,24 @@ using namespace std;
 namespace k4aviewer
 {
 /**
+* \brief converts opencv 3d point to be used in projectPoints
+*/
+vector<Point3f> prepare_for_2d_reprojection(Vec3d &rvec, vector<Point3f> original)
+{
+    vector<Point3f> result;
+    for (int i = 0; i < original.size(); i++)
+    {
+        Vec3d tvec(original[i].x, original[i].y, original[i].z);
+        Mat R;
+        Rodrigues(rvec, R);
+        R = R.t();
+        Mat new_tvec = -R * tvec;
+        double *tmp = new_tvec.ptr<double>(0);
+        result.push_back(Point3f((float)tmp[0] * 1000, (float)tmp[1] * 1000, (float)tmp[2] * 1000));
+    }
+    return result;
+}
+/**
  * \brief get intrinsic calibration from Azure Kinect device as charuco needs
  */
 void get_intrinsics(k4a_calibration_t calibration, Mat &camMatrix, Mat &distCoeffs)

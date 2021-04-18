@@ -71,8 +71,13 @@ void tranformation_helpers_write_point_cloud(const k4a_image_t point_cloud_image
     ofs.close();
 
     std::stringstream ss;
+    printf("Writing point clouds...\nPoints size: %d\n", (int)points.size());
     for (size_t i = 0; i < points.size(); ++i)
     {
+        if (i % 100000 == 0)
+        {
+            printf("completed: %d/%d\n", (int)i, (int)points.size());
+        }
         // image data is BGR
         ss << (float)points[i].xyz[0] << " " << (float)points[i].xyz[1] << " " << (float)points[i].xyz[2];
         ss << " " << (float)points[i].rgb[2] << " " << (float)points[i].rgb[1] << " " << (float)points[i].rgb[0];

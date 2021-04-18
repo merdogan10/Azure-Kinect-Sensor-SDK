@@ -442,7 +442,13 @@ static void print_usage()
 int main(int argc, char **argv)
 {
     int returnCode = 0;
-
+    char *file_path1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v1\\charuco_rotate\\cn03\\k4a_record.mkv";
+    char *file_path2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v1\\charuco_rotate\\cn06\\k4a_record.mkv";
+    std::string output_file1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\out_1.ply";
+    std::string output_file2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\out_2.ply";
+    returnCode = playback(file_path1, 1000, output_file1);
+    returnCode = playback(file_path2, 1000, output_file2);
+    
     if (argc < 2)
     {
         print_usage();

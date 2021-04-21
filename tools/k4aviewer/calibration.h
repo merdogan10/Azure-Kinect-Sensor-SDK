@@ -118,8 +118,8 @@ private:
                     x /= 1000; // given in mm by Cloud Compare
                 transformation[j][i] = x;
             }
-        linmath::mat4x4_dup(m_se3_depth, transformation);
-        linmath::mat4x4_mul(m_se3_color, m_se3_depth, m_charuco.m_extrinsics);
+        linmath::mat4x4_dup(m_se3_color, transformation);
+        linmath::mat4x4_mul(m_se3_depth, m_charuco.m_extrinsics, m_se3_color);
     }
     /**
     * \brief generates se3 from VICON world2camera file

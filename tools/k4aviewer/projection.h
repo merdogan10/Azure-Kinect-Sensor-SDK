@@ -64,7 +64,7 @@ public:
             m_c2c_mm[3][i] *= units_per_meter;
 
         int number_of_frames = 5;
-        double pixel_error = 0, distance_error = 0;
+        vector<double> error_2d, error_3d;
         for (int i = 0; i < number_of_frames; i++)
         {
             bool result_1 = false, result_2 = false;
@@ -129,11 +129,12 @@ public:
                                        (float)match_loc.y);
 
                     // 2d error in pixels
-                    pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                                  m_charuco_1.m_outer_ids,
-                                                                  m_hom_corners_2,
-                                                                  m_charuco_2.m_outer_ids,
-                                                                  m_warpMat_1);
+                    pixel_error_by_frame_per_point(m_hom_corners_1,
+                                                   m_charuco_1.m_outer_ids,
+                                                   m_hom_corners_2,
+                                                   m_charuco_2.m_outer_ids,
+                                                   m_warpMat_1,
+                                                   error_2d);
 
                     show_image("error", m_warpMat_1, 810, 440);
                 }
@@ -171,55 +172,12 @@ public:
                 create_hom_corners(m_hom_corners_1, (float)block_width, (float)block_height, (float)match_loc.x, (float)match_loc.y);
 
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                              m_charuco_1.m_outer_ids,
-                                                              m_hom_corners_2,
-                                                              m_charuco_2.m_outer_ids,
-                                                              m_warpMat_1);
-
-                show_image("error", m_warpMat_1, 810, 440);
-                break;
-
-            case k4aviewer::ProjectionMode::Outer_3D_homography:
-                // 3d projection of board corners
-                project_3d_to_3d(m_charuco_2,
-                                 m_charuco_2.m_outer_corners_3d,
-                                 m_projected_board_corners_3d,
-                                 m_projected_board_corners_from_3d);
-
-                // extract board by homography
-                homography(m_projected_board_corners_from_3d, video_1.m_colorMat, for_overlay_1);
-                homography(m_charuco_2.m_outer_corners, video_2.m_colorMat, for_overlay_2);
-                // overlay
-                addWeighted(for_overlay_1, alpha, for_overlay_2, beta_value, 0.0, overlay_image);
-                show_image("overlay", overlay_image, 405, 440);
-
-                block_width = 640;
-                block_height = 480;
-                offset = 200;
-                match_loc = template_matching_pipeline(m_projected_board_corners_from_3d,
-                                                       m_charuco_2.m_outer_corners,
-                                                       block_width,
-                                                       block_height,
-                                                       200);
-
-                create_hom_corners(m_hom_corners_2,
-                                   (float)block_width,
-                                   (float)block_height,
-                                   (float)offset,
-                                   (float)offset);
-                create_hom_corners(m_hom_corners_1,
-                                   (float)block_width,
-                                   (float)block_height,
-                                   (float)match_loc.x,
-                                   (float)match_loc.y);
-
-                // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_hom_corners_1,
-                                                              m_charuco_1.m_outer_ids,
-                                                              m_hom_corners_2,
-                                                              m_charuco_2.m_outer_ids,
-                                                              m_warpMat_1);
+                pixel_error_by_frame_per_point(m_hom_corners_1,
+                                               m_charuco_1.m_outer_ids,
+                                               m_hom_corners_2,
+                                               m_charuco_2.m_outer_ids,
+                                               m_warpMat_1,
+                                               error_2d);
 
                 show_image("error", m_warpMat_1, 810, 440);
                 break;
@@ -231,16 +189,19 @@ public:
                                  m_projected_corners_3d,
                                  m_projected_corners_from_3d);
                 // 3d error in mm
-                distance_error += distance_error_by_frame_per_point(m_charuco_1.m_calculated_corners_3d,
-                                                                    m_charuco_1.m_calculated_ids,
-                                                                    m_projected_corners_3d,
-                                                                    m_charuco_2.m_calculated_ids);
+                distance_error_by_frame_per_point(m_charuco_1.m_calculated_corners_3d,
+                                                  m_charuco_1.m_calculated_ids,
+                                                  m_projected_corners_3d,
+                                                  m_charuco_2.m_calculated_ids,
+                                                  error_3d);
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
-                                                              m_charuco_1.m_calculated_ids,
-                                                              m_projected_corners_from_3d,
-                                                              m_charuco_2.m_calculated_ids,
-                                                              video_1.m_colorMat);
+                pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
+                                               m_charuco_1.m_calculated_ids,
+                                               m_projected_corners_from_3d,
+                                               m_charuco_2.m_calculated_ids,
+                                               video_1.m_colorMat,
+                                               error_2d);
+                
                 draw(m_charuco_1.m_calculated_corners,
                      m_charuco_1.m_calculated_ids,
                      m_projected_corners_from_3d,
@@ -256,11 +217,12 @@ public:
                                  m_charuco_2.m_calculated_corners,
                                  m_projected_corners);
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
-                                                              m_charuco_1.m_calculated_ids,
-                                                              m_projected_corners,
-                                                              m_charuco_2.m_calculated_ids,
-                                                              video_1.m_colorMat);
+                pixel_error_by_frame_per_point(m_charuco_1.m_calculated_corners,
+                                               m_charuco_1.m_calculated_ids,
+                                               m_projected_corners,
+                                               m_charuco_2.m_calculated_ids,
+                                               video_1.m_colorMat,
+                                               error_2d);
                 draw(m_charuco_1.m_calculated_corners,
                      m_charuco_1.m_calculated_ids,
                      m_projected_corners,
@@ -276,11 +238,12 @@ public:
                                  m_charuco_2.m_detected_corners,
                                  m_projected_corners);
                 // 2d error in pixels
-                pixel_error += pixel_error_by_frame_per_point(m_charuco_1.m_detected_corners,
-                                                              m_charuco_1.m_detected_ids,
-                                                              m_projected_corners,
-                                                              m_charuco_2.m_detected_ids,
-                                                              video_1.m_colorMat);
+                pixel_error_by_frame_per_point(m_charuco_1.m_detected_corners,
+                                               m_charuco_1.m_detected_ids,
+                                               m_projected_corners,
+                                               m_charuco_2.m_detected_ids,
+                                               video_1.m_colorMat,
+                                               error_2d);
                 draw(m_charuco_1.m_detected_corners,
                      m_charuco_1.m_detected_ids,
                      m_projected_corners,
@@ -295,10 +258,28 @@ public:
             video_1.release_images();
             video_2.release_images();
         }
-        double average_pixel_error = pixel_error / number_of_frames,
-               average_distance_error = distance_error / number_of_frames;
-        average_pixel_error;
-        average_distance_error; 
+        // 2d error
+        double sum_error = 0;
+        for (int i = 0; i < error_2d.size(); i++)
+            sum_error += error_2d[i];
+        double average_pixel_error = sum_error ? sum_error / error_2d.size(): 0;
+        // 2d std
+        sum_error = 0;
+        for (int i = 0; i < error_2d.size(); i++)
+            sum_error += (error_2d[i] - average_pixel_error) * (error_2d[i] - average_pixel_error);
+        double std_dev_2d = sum_error ? sqrt(sum_error / error_2d.size()) : 0;
+        // 3d error
+        sum_error = 0;
+        for (int i = 0; i < error_3d.size(); i++)
+            sum_error += error_3d[i];
+        double average_distance_error = sum_error ? sum_error / error_3d.size() : 0;
+        // 3d std
+        sum_error = 0;
+        for (int i = 0; i < error_3d.size(); i++)
+            sum_error += (error_3d[i] - average_distance_error) * (error_3d[i] - average_distance_error);
+        double std_dev_3d = sum_error ? sqrt(sum_error / error_3d.size()) : 0;
+        
+        printf("%lf %lf %lf %lf", average_pixel_error, std_dev_2d, average_distance_error, std_dev_3d);
         video_1.close_playback();
         video_2.close_playback();
     }
@@ -875,36 +856,38 @@ public:
         //show_image("Projected", video_1.m_colorMat);
     }
 
-    double distance_error_by_frame_per_point(vector<Point3f> corners_3d_1,
+    void distance_error_by_frame_per_point(vector<Point3f> corners_3d_1,
                                              vector<int> ids_1,
                                              vector<Point3f> corners_3d_2,
-                                             vector<int> ids_2)
+                                             vector<int> ids_2,
+                                             vector<double> &errors)
     {
         Mat empty;
-        return error_by_frame_per_point(
-            vector<Point2f>(), corners_3d_1, ids_1, vector<Point2f>(), corners_3d_2, ids_2, true, empty);
+        error_by_frame_per_point(
+            vector<Point2f>(), corners_3d_1, ids_1, vector<Point2f>(), corners_3d_2, ids_2, true, empty, errors);
     }
-    double pixel_error_by_frame_per_point(vector<Point2f> corners_1,
+    void pixel_error_by_frame_per_point(vector<Point2f> corners_1,
                                           vector<int> ids_1,
                                           vector<Point2f> corners_2,
                                           vector<int> ids_2,
-                                          Mat &image)
+                                          Mat &image,
+                                          vector<double> &errors)
     {
-        return error_by_frame_per_point(corners_1, vector<Point3f>(), ids_1, corners_2, vector<Point3f>(), ids_2, false, image);
+        error_by_frame_per_point(
+            corners_1, vector<Point3f>(), ids_1, corners_2, vector<Point3f>(), ids_2, false, image, errors);
     }
 
-    double error_by_frame_per_point(vector<Point2f> corners_1,
+    void error_by_frame_per_point(vector<Point2f> corners_1,
                                     vector<Point3f> corners_3d_1,
                                     vector<int> ids_1,
                                     vector<Point2f> corners_2,
                                     vector<Point3f> corners_3d_2,
                                     vector<int> ids_2,
                                     bool error_in_3d,
-                                    Mat &image)
+                                    Mat &image,
+                                    vector<double> &errors)
     {
         int idx_1 = 0, idx_2 = 0;
-        double frame_error = 0;
-        int number_of_corners = 0;
         while (idx_1 < ids_1.size() && idx_2 < ids_2.size())
         {
             if (ids_1[idx_1] == ids_2[idx_2])
@@ -917,8 +900,7 @@ public:
                 }
                 else
                     e = norm(corners_3d_1[idx_1] - corners_3d_2[idx_2]) * 1000.0; // error in mm
-                frame_error += e;
-                number_of_corners++;
+                errors.push_back(e);
                 idx_1++;
                 idx_2++;
             }
@@ -927,7 +909,6 @@ public:
             else
                 idx_2++;
         }
-        return frame_error / number_of_corners;
     }
 
     vector<Point2f> m_raycast_corners_1, m_raycast_corners_2;

@@ -9,7 +9,7 @@
 
 // Library headers
 //
-
+#include <fstream>
 // Project headers
 //
 #include "charuco.h"
@@ -50,7 +50,11 @@ enum class ProjectionMode
 class Projection
 {
 public:
-    Projection(string input_video_1, string input_video_2, linmath::mat4x4 c2c) :
+    Projection(string input_video_1,
+               string input_video_2,
+               linmath::mat4x4 c2c,
+               ProjectionMode projection_mode,
+               string projection_stats_path) :
         video_1(input_video_1),
         video_2(input_video_2),
         m_charuco_1(input_video_1),
@@ -90,8 +94,7 @@ public:
             Mat disp;
             Point match_loc;
             
-            ProjectionMode mode = ProjectionMode::Outer_3D_raycast_homography;
-            switch (mode)
+            switch (projection_mode)
             {
             case k4aviewer::ProjectionMode::Find_plane:
 
@@ -279,9 +282,14 @@ public:
             sum_error += (error_3d[i] - average_distance_error) * (error_3d[i] - average_distance_error);
         double std_dev_3d = sum_error ? sqrt(sum_error / error_3d.size()) : 0;
         
-        printf("%lf %lf %lf %lf", average_pixel_error, std_dev_2d, average_distance_error, std_dev_3d);
+        ofstream stats_out(projection_stats_path);
+        stats_out << "avg pixel error: " << average_pixel_error << endl
+                  << "std dev 2d: " << std_dev_2d << endl
+                  << "avg distance error: " << average_distance_error << endl
+                  << "std dev 3d: " << std_dev_3d << endl;
         video_1.close_playback();
         video_2.close_playback();
+        destroyAllWindows();
     }
 
     void create_hom_corners(vector<Point2f> &hom_corners, float width, float height, float offset_x, float offset_y)

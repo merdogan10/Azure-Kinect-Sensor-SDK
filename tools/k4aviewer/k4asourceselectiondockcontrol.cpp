@@ -26,6 +26,7 @@
 #include "k4awindowmanager.h"
 #include "calibration.h"
 #include "projection.h"
+#include "uncertainty.h"
 #include "linmath.h"
 using namespace k4aviewer;
 
@@ -146,6 +147,8 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
     {
         path;
         string captures_folder = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\";
+        //string uncertainty_video_path = captures_folder + "v2\\board_depth\\cn06\\k4a_record.mkv";
+        //Uncertainty certain(uncertainty_video_path);
 
         string world2camera_file = captures_folder + "v1\\vicon_calibration\\cn03\\world2camera.txt";
         string world2camera_file2 = captures_folder + "v1\\vicon_calibration\\cn06\\world2camera.txt";

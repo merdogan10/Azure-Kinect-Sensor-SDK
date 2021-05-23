@@ -110,9 +110,9 @@ bool intrinsics_extrinsics(const char *file_path, Mat &cameraMatrix, Mat &distCo
 class Video
 {
 public:
-    Video(string input_video) : m_input_video(input_video)
+    Video(string input_video, int seek = 8000) : m_input_video(input_video)
     {
-        open_playback(m_input_video, m_playback_handle, m_calibration);
+        open_playback(m_input_video, m_playback_handle, m_calibration, seek);
     }
     Video(){};
     ~Video() = default;
@@ -146,7 +146,7 @@ private:
     /**
     * \brief open playback and get calibration
     */
-    void open_playback(string video, k4a_playback_t &playback_handle, k4a_calibration_t &calibration)
+    void open_playback(string video, k4a_playback_t &playback_handle, k4a_calibration_t &calibration, int seek = 8000)
     {
         if (k4a_playback_open(video.c_str(), &playback_handle) != K4A_RESULT_SUCCEEDED)
         {
@@ -160,7 +160,7 @@ private:
         }
         k4a_playback_set_color_conversion(playback_handle, K4A_IMAGE_FORMAT_COLOR_BGRA32);
         // seek to 8th second
-        k4a_playback_seek_timestamp(playback_handle, 8000 * 1000, K4A_PLAYBACK_SEEK_BEGIN);
+        k4a_playback_seek_timestamp(playback_handle, seek * 1000, K4A_PLAYBACK_SEEK_BEGIN);
     }
 
     /**

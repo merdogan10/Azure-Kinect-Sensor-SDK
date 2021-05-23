@@ -67,6 +67,7 @@ public:
         calculate_charuco_corners(m_outer_corners, m_outer_corners_3d, m_outer_ids, true);
     }
     
+    bool m_valid;
     Vec3d m_rvec, m_tvec;
     vector<Point2f> m_detected_corners, m_calculated_corners, m_outer_corners;
     vector<Point3f> m_calculated_corners_3d, m_outer_corners_3d;
@@ -119,6 +120,7 @@ private:
                              Vec3d &rvec,
                              Vec3d &tvec)
     {
+        m_valid = false;
         vector<int> markerIds;
         vector<vector<Point2f>> markerCorners;
         aruco::detectMarkers(image, board->dictionary, markerCorners, markerIds, params);
@@ -130,7 +132,7 @@ private:
             // if at least one corner detected
             if (detected_ids.size() > 0)
             {
-                aruco::estimatePoseCharucoBoard(
+                m_valid = aruco::estimatePoseCharucoBoard(
                     detected_corners, detected_ids, board, cameraMatrix, distCoeffs, rvec, tvec);
             }
         }

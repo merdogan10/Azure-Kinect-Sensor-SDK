@@ -22,22 +22,22 @@ namespace k4aviewer
 class Uncertainty
 {
 public:
-    Uncertainty(string input_video) :
-        m_video(input_video), m_charuco(input_video)
+    Uncertainty(string input_video) : m_video(input_video, 0), m_charuco(input_video)
     {
-        int number_of_frames = 370;
+        int number_of_frames = 440;
         vector<Point3f> centers_cv, centers_k4a_depth, centers_k4a_color;
+        vector<int> valid_frames;
         for (int i = 0; i < number_of_frames; i++)
         {
             bool result = false;
             result = m_video.next_capture_image();
             if (!result)
-            {
-                i--;
                 continue;
-            }
 
             m_charuco.detect_charuco_pose(m_video.m_colorMat);
+            if (!m_charuco.m_valid)
+                continue;
+
             m_charuco.calculate_corners();
 
             Point3f center_cv(0, 0, 0), center_dep(0, 0, 0), center_col(0, 0, 0);
@@ -81,6 +81,7 @@ public:
                 center_col += col_p;
 
                 center_cv += m_charuco.m_outer_corners_3d[j] * 1000;
+
             }
             center_cv.x /= m_charuco.m_outer_corners_3d.size();
             center_cv.y /= m_charuco.m_outer_corners_3d.size();
@@ -96,20 +97,22 @@ public:
             center_dep.y /= m_charuco.m_outer_corners_3d.size();
             center_dep.z /= m_charuco.m_outer_corners_3d.size();
             centers_k4a_color.push_back(center_dep);
+
+            valid_frames.push_back(i);
             m_video.release_images();
         }
+        string captures_folder = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\";
 
-        ofstream cv_out("C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\cv.txt");
-        ofstream color_out("C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\color.txt");
-        ofstream depth_out("C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\depth.txt");
-        cv_out << number_of_frames << endl;
-        color_out << number_of_frames << endl;
-        depth_out << number_of_frames << endl;
-        for (int i = 0; i < number_of_frames; i++)
+        ofstream cv_out(captures_folder + "cv.txt");
+        ofstream color_out(captures_folder + "color.txt");
+        ofstream depth_out(captures_folder + "depth.txt");
+        ofstream frames_out(captures_folder + "frames.txt");
+        for (int i = 0; i < centers_cv.size(); i++)
         {
             cv_out << centers_cv[i] << endl;
             color_out << centers_k4a_color[i] << endl;
             depth_out << centers_k4a_depth[i] << endl;
+            frames_out << valid_frames[i] << endl;
         }
         m_video.close_playback();
     }

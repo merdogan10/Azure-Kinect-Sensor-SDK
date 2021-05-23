@@ -144,7 +144,7 @@ public:
                 break;
             case k4aviewer::ProjectionMode::Outer_3D_raycast_homography:
                 // 3d projection of board corners
-                project_3d_to_3d(m_charuco_2,
+                project_3d_to_3d(m_charuco_1,
                                  m_charuco_2.m_outer_corners_3d,
                                  m_projected_board_corners_3d,
                                  m_projected_board_corners_from_3d);
@@ -169,7 +169,7 @@ public:
                 block_width = 640;
                 block_height = 480;
                 offset = 200;
-                match_loc = template_matching_pipeline(m_raycast_corners_1, m_raycast_corners_2, block_width, block_height, 200);
+                match_loc = template_matching_pipeline(m_raycast_corners_1, m_raycast_corners_2, block_width, block_height, offset);
 
                 create_hom_corners(m_hom_corners_2, (float)block_width, (float)block_height, (float)offset, (float)offset);
                 create_hom_corners(m_hom_corners_1, (float)block_width, (float)block_height, (float)match_loc.x, (float)match_loc.y);
@@ -187,7 +187,7 @@ public:
 
             case k4aviewer::ProjectionMode::Inner_3D:
                 // 3d projection of calculated corners
-                project_3d_to_3d(m_charuco_2,
+                project_3d_to_3d(m_charuco_1,
                                  m_charuco_2.m_calculated_corners_3d,
                                  m_projected_corners_3d,
                                  m_projected_corners_from_3d);

@@ -96,8 +96,7 @@ public:
             
             switch (projection_mode)
             {
-            case k4aviewer::ProjectionMode::Find_plane:
-
+            case k4aviewer::ProjectionMode::Find_plane: {
                 find_plane(video_2.m_calibration, video_2.m_depthMat, m_planes_2, m_planes_3d_2, block_size);
                 for (int j = 0; j < m_planes_3d_2.size(); j++)
                 {
@@ -142,7 +141,8 @@ public:
                     show_image("error", m_warpMat_1, 810, 440);
                 }
                 break;
-            case k4aviewer::ProjectionMode::Outer_3D_raycast_homography:
+            }
+            case k4aviewer::ProjectionMode::Outer_3D_raycast_homography: {
                 // 3d projection of board corners
                 project_3d_to_3d(m_charuco_1,
                                  m_charuco_2.m_outer_corners_3d,
@@ -184,8 +184,8 @@ public:
 
                 show_image("error", m_warpMat_1, 810, 440);
                 break;
-
-            case k4aviewer::ProjectionMode::Inner_3D:
+            }
+            case k4aviewer::ProjectionMode::Inner_3D: {
                 // 3d projection of calculated corners
                 project_3d_to_3d(m_charuco_1,
                                  m_charuco_2.m_calculated_corners_3d,
@@ -210,8 +210,8 @@ public:
                      m_projected_corners_from_3d,
                      m_charuco_2.m_calculated_ids);
                 break;
-
-            case k4aviewer::ProjectionMode::Inner_2D_calculated_corners:
+            }
+            case k4aviewer::ProjectionMode::Inner_2D_calculated_corners: {
                 // 2d projection of calculated corners (using kinect sdk)
                 project_2d_to_2d(video_1.m_calibration,
                                  video_2.m_calibration,
@@ -231,8 +231,8 @@ public:
                      m_projected_corners,
                      m_charuco_2.m_calculated_ids);
                 break;
-
-            case k4aviewer::ProjectionMode::Inner_2D_detected_corners:
+            }
+            case k4aviewer::ProjectionMode::Inner_2D_detected_corners: {
                 // 2d projection of detected corners (using kinect sdk)
                 project_2d_to_2d(video_1.m_calibration,
                                  video_2.m_calibration,
@@ -252,7 +252,7 @@ public:
                      m_projected_corners,
                      m_charuco_2.m_detected_ids);
                 break;
-
+            }
             default:
                 throw std::runtime_error("Selected an unsupported projection type!");
                 break;

@@ -21,7 +21,7 @@ namespace k4aviewer
 /**
  * \brief show image with given name
  */
-void show_image(string window_name, Mat image, int x_pos = 0, int y_pos = 0)
+void show_image(string window_name, Mat image, int x_pos = 0, int y_pos = 0, bool zoom_in = false)
 {
     namedWindow(window_name, WINDOW_NORMAL);
     if (image.rows > 1000)
@@ -30,7 +30,10 @@ void show_image(string window_name, Mat image, int x_pos = 0, int y_pos = 0)
     }
     else
     {
-        resizeWindow(window_name, 400, 400);
+        if (zoom_in)
+            resizeWindow(window_name, 1000, 1000);
+        else
+            resizeWindow(window_name, 400, 400);
     }
     moveWindow(window_name, x_pos, y_pos);
     imshow(window_name, image);

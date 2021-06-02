@@ -39,6 +39,7 @@ public:
                 continue;
 
             m_charuco.calculate_corners();
+            //draw_charuco();
 
             Point3f center_cv(0, 0, 0), center_dep(0, 0, 0), center_col(0, 0, 0);
             for (int j = 0; j < m_charuco.m_outer_corners.size(); j++)
@@ -115,6 +116,32 @@ public:
             frames_out << valid_frames[i] << endl;
         }
         m_video.close_playback();
+    }
+
+    void draw_charuco() {
+        Mat color_copy;
+        m_video.m_colorMat.copyTo(color_copy);
+        aruco::drawDetectedCornersCharuco(color_copy,
+                                          m_charuco.m_detected_corners,
+                                          m_charuco.m_detected_ids,
+                                          Scalar(0, 0, 255));
+        aruco::drawDetectedCornersCharuco(color_copy,
+                                          m_charuco.m_outer_corners,
+                                          m_charuco.m_outer_ids,
+                                          Scalar(0, 255, 0));
+
+        aruco::drawAxis(color_copy,
+                        m_charuco.m_cameraMatrix,
+                        m_charuco.m_distCoeffs,
+                        m_charuco.m_rvec,
+                        m_charuco.m_tvec,
+                        0.1f);
+       Mat croppedFrame = color_copy(Rect(int(m_charuco.m_outer_corners[3].x) - 300,
+                                           int(m_charuco.m_outer_corners[3].y) - 300,
+                                           int(m_charuco.m_outer_corners[2].x - m_charuco.m_outer_corners[3].x) + 600,
+                                           int(m_charuco.m_outer_corners[0].y - m_charuco.m_outer_corners[3].y) + 600));
+        show_image("Projected", croppedFrame, 0, 0, true);
+        //show_image("Projected", color_copy, 0, 0, true);
     }
 
     Charuco m_charuco;

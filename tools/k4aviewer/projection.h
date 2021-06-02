@@ -531,6 +531,8 @@ public:
                     vector<vector<Point3f>> &planes_3d,
                     int block_size = 10)
     {
+        planes.clear();
+        planes_3d.clear();
         int rows = depthMat.rows;
         int cols = depthMat.cols;
         vector<Point2f> corners, inners;
@@ -786,7 +788,7 @@ public:
 
             Point3f projected_3d(point_3d_projected.xyz.x, point_3d_projected.xyz.y, point_3d_projected.xyz.z);
             Point3f reprojected_3d(point_3d_reprojected.xyz.x, point_3d_reprojected.xyz.y, point_3d_reprojected.xyz.z);
-            double distance = norm(projected_3d-reprojected_3d);
+            double distance = norm(projected_3d - reprojected_3d);
             if (distance > 50)
                 return false;
             new_corners.push_back(Point2f(point_2d_projected.xy.x, point_2d_projected.xy.y));
@@ -860,8 +862,8 @@ public:
                                                    video_1.m_colorMat.rows / 4,
                                                    video_1.m_colorMat.cols / 3,
                                                    video_1.m_colorMat.rows / 3));
-        show_image("Projected", croppedFrame);
-        //show_image("Projected", video_1.m_colorMat);
+        //show_image("Projected", croppedFrame);
+        show_image("Projected", video_1.m_colorMat);
     }
 
     void distance_error_by_frame_per_point(vector<Point3f> corners_3d_1,

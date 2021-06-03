@@ -162,6 +162,9 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
         // 0.000000 0.000000 0.000000 1.000000
         string icp_file = captures_folder + "v1\\icp\\cn03\\icp.txt";
         string icp_file2 = captures_folder + "v1\\icp\\cn06\\icp.txt";
+
+        string color_icp_file = captures_folder + "v1\\color_icp\\cn03\\color_icp.json";
+        string color_icp_file2 = captures_folder + "v1\\color_icp\\cn06\\color_icp.json";
         
         string input_video_path = captures_folder + "v1\\charuco_rotate\\cn03\\k4a_record.mkv";
         k4a::playback recording = k4a::playback::open(input_video_path.c_str());
@@ -172,15 +175,16 @@ void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path 
         linmath::mat4x4 se3, se3_2;
         linmath::mat4x4 c2c_depth, c2c_color;
         
-        CalibrationType calibration_type = CalibrationType::ICP;
-        string type_str = "icp";
+        CalibrationType calibration_type = CalibrationType::ColorICP;
+        string type_str = "coloricp";
 
-        Calibration calib(input_video_path, world2camera_file, icp_file, calibration_type);
-        Calibration calib2(input_video_path2, world2camera_file2, icp_file2, calibration_type);
+        Calibration calib(input_video_path, world2camera_file, icp_file, color_icp_file, calibration_type);
+        Calibration calib2(input_video_path2, world2camera_file2, icp_file2, color_icp_file2, calibration_type);
         
         switch (calibration_type)
         {
         case k4aviewer::CalibrationType::Quaternion:
+        case k4aviewer::CalibrationType::ColorICP:
             // se3' * se3_2
             calib.get_se3_color_inverse(se3);
             calib2.get_se3_color(se3_2);

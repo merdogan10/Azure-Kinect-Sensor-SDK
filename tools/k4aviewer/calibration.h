@@ -44,7 +44,8 @@ enum class CalibrationType
 {
     Quaternion,
     Charuco,
-    ICP
+    ICP,
+    ColorICP
 };
 class Calibration
 {
@@ -72,7 +73,7 @@ public:
     * \param icp_file path to icp calibration file
     * \param calibration_type can be only element of enum class CalibrationType
     */
-    Calibration(string input_video, string world2camera_file, string icp_file, CalibrationType calibration_type) :
+    Calibration(string input_video, string world2camera_file, string icp_file, string color_icp_file, CalibrationType calibration_type) :
         m_charuco(input_video)
     {
         switch (calibration_type)
@@ -90,6 +91,10 @@ public:
             se3_from_icp(icp_file);
             break;
 
+        case k4aviewer::CalibrationType::ColorICP:
+            se3_from_color_icp(color_icp_file);
+            break;
+
         default:
             throw std::runtime_error("Selected an unsupported calibration type!");
             break;
@@ -102,6 +107,29 @@ public:
     ~Calibration() = default;
 
 private:
+    void se3_from_color_icp(string file_name) {
+        ifstream read(file_name);
+        string empty;
+        float qw, qx, qy, qz, tx, ty, tz;
+        read >> empty >> empty >> empty >> empty >> empty >> empty;
+        read >> tx >> empty >> empty;
+        read >> ty >> empty >> empty;
+        read >> tz >> empty >> empty >> empty >> empty;
+        read >> qx >> empty >> empty;
+        read >> qy >> empty >> empty;
+        read >> qz >> empty >> empty;
+        read >> qw;
+
+        linmath::quat rotation_quat{ qx, qy, qz, qw };
+        linmath::mat4x4 transformation;
+        linmath::mat4x4_from_quat(transformation, rotation_quat);
+        transformation[3][0] = tx;
+        transformation[3][1] = ty;
+        transformation[3][2] = tz;
+
+        linmath::mat4x4_rotate_X(m_se3_depth, transformation, Radians(180));
+        linmath::mat4x4_mul(m_se3_color, m_se3_depth, m_charuco.m_extrinsics);
+    }
     /**
      * \brief generates se3 from icp transformation file
      * \param file_name path to icp file

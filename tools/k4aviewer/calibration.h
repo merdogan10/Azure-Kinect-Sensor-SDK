@@ -42,7 +42,7 @@ void move_into_GL(linmath::mat4x4 result, linmath::mat4x4 input)
 }
 enum class CalibrationType
 {
-    Quaternion,
+    Bundle,
     Charuco,
     ICP,
     ColorICP
@@ -73,13 +73,13 @@ public:
     * \param icp_file path to icp calibration file
     * \param calibration_type can be only element of enum class CalibrationType
     */
-    Calibration(string input_video, string world2camera_file, string icp_file, string color_icp_file, CalibrationType calibration_type) :
+    Calibration(string input_video, string calib_file, CalibrationType calibration_type) :
         m_charuco(input_video)
     {
         switch (calibration_type)
         {
-        case k4aviewer::CalibrationType::Quaternion:
-            se3_from_quat(world2camera_file);
+        case k4aviewer::CalibrationType::Bundle:
+            se3_from_bundle(calib_file);
             break;
 
         case k4aviewer::CalibrationType::Charuco:
@@ -88,11 +88,11 @@ public:
             break;
 
         case k4aviewer::CalibrationType::ICP:
-            se3_from_icp(icp_file);
+            se3_from_icp(calib_file);
             break;
 
         case k4aviewer::CalibrationType::ColorICP:
-            se3_from_color_icp(color_icp_file);
+            se3_from_color_icp(calib_file);
             break;
 
         default:
@@ -153,7 +153,7 @@ private:
     * \brief generates se3 from VICON world2camera file
     * \param file_name path to world2camera file
     */
-    void se3_from_quat(string file_name)
+    void se3_from_bundle(string file_name)
     {
         ifstream read(file_name);
         string empty;

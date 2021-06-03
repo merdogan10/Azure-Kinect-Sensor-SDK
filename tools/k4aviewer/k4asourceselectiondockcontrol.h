@@ -39,7 +39,7 @@ private:
     void RefreshDevices();
 
     void OpenDevice();
-    void OpenRecording(const std17::filesystem::path &path);
+    void OpenRecording();
 
     int m_selectedDevice = -1;
     std::vector<std::pair<int, std::string>> m_connectedDevices;

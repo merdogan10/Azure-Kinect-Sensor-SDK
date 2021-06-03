@@ -73,7 +73,7 @@ K4ADockControlStatus K4ASourceSelectionDockControl::Show()
     {
         if (m_filePicker.Show())
         {
-            OpenRecording(m_filePicker.GetPath());
+            OpenRecording();
         }
 
         ImGui::TreePop();
@@ -141,11 +141,10 @@ void K4ASourceSelectionDockControl::OpenDevice()
     }
 }
 
-void K4ASourceSelectionDockControl::OpenRecording(const std17::filesystem::path &path)
+void K4ASourceSelectionDockControl::OpenRecording()
 {
     try
     {
-        path;
         string v1 = "v1", v2 = "v2";
         string c1 = "cn03", c2 = "cn06";
         string used_version = v1;

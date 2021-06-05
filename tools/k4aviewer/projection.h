@@ -140,6 +140,19 @@ public:
                                                    m_charuco_2.m_outer_ids,
                                                    m_warpMat_1,
                                                    error_2d);
+                    // only first one is enough
+                    error_2d.pop_back();
+                    error_2d.pop_back();
+                    error_2d.pop_back();
+
+                    // if error is higher than the color block size
+                    // this means it's an outlier
+                    if (error_2d.back() > (float)block_width)
+                    {
+                        error_2d.pop_back();
+                        destroyAllWindows();
+                        continue;
+                    }
 
                     show_image("error", m_warpMat_1, 810, 440);
                 }

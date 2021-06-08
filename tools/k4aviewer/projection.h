@@ -145,9 +145,9 @@ public:
                     error_2d.pop_back();
                     error_2d.pop_back();
 
-                    // if error is higher than the color block size
+                    // if error is higher or lower than the limit 
                     // this means it's an outlier
-                    if (error_2d.back() > (float)block_width)
+                    if (error_2d.back() > 40 || error_2d.back() < 10)
                     {
                         error_2d.pop_back();
                         destroyAllWindows();

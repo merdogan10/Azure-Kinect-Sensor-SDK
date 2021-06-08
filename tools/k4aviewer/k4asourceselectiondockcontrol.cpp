@@ -147,8 +147,9 @@ void K4ASourceSelectionDockControl::OpenRecording()
     {
         string v1 = "v1", v2 = "v2";
         string c1 = "cn03", c2 = "cn06";
+        string folders[4] = { "charuco_rotate", "charuco_move", "stable_board" };
         string used_version = v1;
-        string charuco_folder = "charuco_rotate";
+        string charuco_folder = folders[0];
         CalibrationType calibration_type = CalibrationType::Charuco;
 
 

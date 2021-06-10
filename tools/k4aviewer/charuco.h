@@ -100,6 +100,9 @@ private:
             dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
             board = aruco::CharucoBoard::create(4, 3, 0.053f, 0.04f, dictionary);
             break;
+        case 9:
+            dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_250);
+            board = cv::aruco::CharucoBoard::create(4, 3, 0.09f, 0.0675f, dictionary);
         default:
             throw std::runtime_error("Invalid board!");
             break;
@@ -191,7 +194,7 @@ private:
                                    vector<int> &ids,
                                    bool is_board_corners = false)
     {
-        corners_3d = get_corners_in_camera_world(0.053, m_rvec, m_tvec, is_board_corners);
+        corners_3d = get_corners_in_camera_world(m_board->getSquareLength(), m_rvec, m_tvec, is_board_corners);
         vector<Point3f> converted;
         converted = prepare_for_2d_reprojection(m_rvec, corners_3d);
         projectPoints(converted, m_rvec, m_tvec, m_cameraMatrix, m_distCoeffs, corners);

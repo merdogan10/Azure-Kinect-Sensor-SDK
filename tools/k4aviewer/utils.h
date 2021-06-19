@@ -120,6 +120,7 @@ public:
     void release_images() {
         k4a_image_release(m_depth_image);
         k4a_image_release(m_color_image);
+        k4a_capture_release(m_capture);
     }
 
     void close_playback() {

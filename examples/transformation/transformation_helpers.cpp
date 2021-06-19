@@ -17,7 +17,8 @@ struct color_point_t
 
 void tranformation_helpers_write_point_cloud(const k4a_image_t point_cloud_image,
                                              const k4a_image_t color_image,
-                                             const char *file_name)
+                                             const char *file_name,
+                                             std::string interest)
 {
     std::vector<color_point_t> points;
 
@@ -26,6 +27,19 @@ void tranformation_helpers_write_point_cloud(const k4a_image_t point_cloud_image
 
     int16_t *point_cloud_image_data = (int16_t *)(void *)k4a_image_get_buffer(point_cloud_image);
     uint8_t *color_image_data = k4a_image_get_buffer(color_image);
+    std::ifstream area;
+    
+    float limit = 1000.0;
+    float unit_meter = 800.0;
+    float x = 0, y = 0, z = 0;
+    if (interest != "")
+    {
+        area.open(interest);
+        area >> x >> y >> z;
+        x *= unit_meter;
+        y *= unit_meter;
+        z *= unit_meter;
+    }
 
     for (int i = 0; i < width * height; i++)
     {
@@ -36,6 +50,15 @@ void tranformation_helpers_write_point_cloud(const k4a_image_t point_cloud_image
         if (point.xyz[2] == 0)
         {
             continue;
+        }
+        if (interest != "")
+        {
+            if (point.xyz[0] < x - limit || x + limit < point.xyz[0])
+                continue;
+            if (point.xyz[1] < y - limit || y + limit < point.xyz[1])
+                continue;
+            if (point.xyz[2] < z - limit || z + limit < point.xyz[2])
+                continue;
         }
 
         point.rgb[0] = color_image_data[4 * i + 0];

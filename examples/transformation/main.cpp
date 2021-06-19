@@ -65,7 +65,8 @@ static bool point_cloud_color_to_depth(k4a_transformation_t transformation_handl
 static bool point_cloud_depth_to_color(k4a_transformation_t transformation_handle,
                                        const k4a_image_t depth_image,
                                        const k4a_image_t color_image,
-                                       std::string file_name)
+                                       std::string file_name,
+                                       std::string interest_area)
 {
     // transform color image into depth camera geometry
     int color_image_width_pixels = k4a_image_get_width_pixels(color_image);
@@ -108,7 +109,7 @@ static bool point_cloud_depth_to_color(k4a_transformation_t transformation_handl
         return false;
     }
 
-    tranformation_helpers_write_point_cloud(point_cloud_image, color_image, file_name.c_str());
+    tranformation_helpers_write_point_cloud(point_cloud_image, color_image, file_name.c_str(), interest_area);
 
     k4a_image_release(transformed_depth_image);
     k4a_image_release(point_cloud_image);
@@ -213,7 +214,7 @@ static int capture(std::string output_dir, uint8_t deviceId = K4A_DEVICE_DEFAULT
 #else
     file_name = output_dir + "/depth_to_color.ply";
 #endif
-    if (point_cloud_depth_to_color(transformation, depth_image, color_image, file_name.c_str()) == false)
+    if (point_cloud_depth_to_color(transformation, depth_image, color_image, file_name.c_str(), "") == false)
     {
         goto Exit;
     }
@@ -249,7 +250,8 @@ static int capture(std::string output_dir, uint8_t deviceId = K4A_DEVICE_DEFAULT
     if (point_cloud_depth_to_color(transformation_color_downscaled,
                                    depth_image,
                                    color_image_downscaled,
-                                   file_name.c_str()) == false)
+                                   file_name.c_str(),
+                                   "") == false)
     {
         goto Exit;
     }
@@ -285,7 +287,10 @@ Exit:
 }
 
 // Timestamp in milliseconds. Defaults to 1 sec as the first couple frames don't contain color
-static int playback(char *input_path, int timestamp = 1000, std::string output_filename = "output.ply")
+static int playback(char *input_path,
+                    int timestamp = 1000,
+                    std::string output_filename = "output.ply",
+                    std::string interest_area = "")
 {
     int returnCode = 1;
     k4a_playback_t playback = NULL;
@@ -397,7 +402,7 @@ static int playback(char *input_path, int timestamp = 1000, std::string output_f
     ///////////////////////////////
 
     // Compute color point cloud by warping depth image into color camera geometry
-    if (point_cloud_depth_to_color(transformation, depth_image, uncompressed_color_image, output_filename) == false)
+    if (point_cloud_depth_to_color(transformation, depth_image, uncompressed_color_image, output_filename, interest_area) == false)
     {
         printf("Failed to transform depth to color\n");
         goto Exit;
@@ -442,12 +447,14 @@ static void print_usage()
 int main(int argc, char **argv)
 {
     int returnCode = 0;
-    char *file_path1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v1\\charuco_rotate\\cn03\\k4a_record.mkv";
-    char *file_path2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v1\\charuco_rotate\\cn06\\k4a_record.mkv";
+    char *file_path1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v2\\stable_board\\cn03\\k4a_record.mkv";
+    char *file_path2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\v2\\stable_board\\cn06\\k4a_record.mkv";
     std::string output_file1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\out_1.ply";
     std::string output_file2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\out_2.ply";
-    returnCode = playback(file_path1, 1000, output_file1);
-    returnCode = playback(file_path2, 1000, output_file2);
+    std::string interest_area1 = "C:\\Users\\Mustafa\\Desktop\\thesis\\point_cloud\\stable_board\\limits_1.txt";
+    std::string interest_area2 = "C:\\Users\\Mustafa\\Desktop\\thesis\\point_cloud\\stable_board\\limits_2.txt";
+    returnCode = playback(file_path1, 0, output_file1, interest_area1);
+    returnCode = playback(file_path2, 0, output_file2, interest_area2);
     
     if (argc < 2)
     {

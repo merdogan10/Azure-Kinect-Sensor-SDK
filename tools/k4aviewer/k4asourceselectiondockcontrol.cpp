@@ -145,17 +145,19 @@ void K4ASourceSelectionDockControl::OpenRecording()
 {
     try
     {
-        string v1 = "v1", v2 = "v2";
+        string v1 = "v1", v2 = "v2", v3 = "v3";
         string c1 = "cn03", c2 = "cn06";
-        string folders[4] = { "charuco_rotate", "charuco_move", "stable_board" };
+        string folders[4] = { "charuco_rotate", "charuco_move", "stable_board", "slider" };
+        string depth_folders[5] = { "board_depth", "depth_70", "depth_150", "depth_250", "depth_300" };
         string used_version = v1;
         string charuco_folder = folders[0];
+        string depth_folder = depth_folders[4];
         CalibrationType calibration_type = CalibrationType::Charuco;
 
 
         string captures_folder = "C:\\Users\\Mustafa\\Desktop\\thesis\\captures\\" + used_version;
-        // string uncertainty_video_path = captures_folder + "\\board_depth\\cn06\\k4a_record.mkv";
-        // Uncertainty certain(uncertainty_video_path);
+        // string uncertainty_video_path = captures_folder + "\\" + depth_folder + "\\" + c2 + "\\k4a_record.mkv";
+        // Uncertainty certain(uncertainty_video_path, captures_folder + "\\" + depth_folder);
 
         string calib_files[2][5];
         calib_files[0][(int)CalibrationType::Bundle] = captures_folder + "\\vicon_calibration\\" + c1 + "\\world2camera.txt";
@@ -207,8 +209,6 @@ void K4ASourceSelectionDockControl::OpenRecording()
             break;
         }
         
-        string test_video_path = captures_folder + "v1\\charuco_move\\cn03\\k4a_record.mkv";
-        string test_video_path2 = captures_folder + "v1\\charuco_move\\cn06\\k4a_record.mkv";
         /*ProjectionMode projection_modes[] = { ProjectionMode::Outer_3D_raycast_homography,
                                               ProjectionMode::Inner_3D,
                                               ProjectionMode::Inner_2D_calculated_corners,

@@ -103,6 +103,7 @@ private:
         case 9:
             dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_4X4_250);
             board = cv::aruco::CharucoBoard::create(4, 3, 0.09f, 0.0675f, dictionary);
+            break;
         default:
             throw std::runtime_error("Invalid board!");
             break;

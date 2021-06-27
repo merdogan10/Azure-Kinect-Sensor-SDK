@@ -28,7 +28,7 @@ public:
         ofstream depth_out(depth_folder + "\\depth.txt");
         ofstream frames_out(depth_folder + "\\frames.txt");
 
-        int number_of_frames = 440;
+        int number_of_frames = 1500;
         vector<vector<Point3f>> corners_cv, corners_k4a_depth;
         vector<int> valid_frames;
         for (int i = 0; i < number_of_frames; i++)

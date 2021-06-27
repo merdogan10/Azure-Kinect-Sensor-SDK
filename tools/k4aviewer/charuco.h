@@ -27,6 +27,8 @@ public:
 
     Charuco(string input_video)
     {
+        if (input_video.find("v3") != string::npos)
+            m_board_type = 9;
         intrinsics_extrinsics(input_video.c_str(), m_cameraMatrix, m_distCoeffs, m_extrinsics);
         init_board(m_board_type, m_dictionary, m_board, m_params);
     }
@@ -47,7 +49,7 @@ public:
         VideoCapture inputVideo;
         inputVideo.open(input_video_path);
 
-        inputVideo.grab();
+        while (!inputVideo.grab());
         Mat image;
         inputVideo.retrieve(image);
         detect_charuco_pose(image);
